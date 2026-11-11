@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Agentic Chess</title>
+        <link
+            rel="icon"
+            href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90' fill='%23ffffff'>♞</text></svg>"
+        />
+        <link href="main.css" rel="stylesheet" />
+        <script src="main.js" defer></script>
+    </head>
+    <body>
+        <nav class="navbar">
+            <ul>
+                <li><a href="/">Home</a></li>
+            </ul>
+        </nav>
+        <main class="game-wrapper">
+            <div>
+                <div class="chessground" id="board-1"></div>
+            </div>
+            <aside id="ai-config">
+                <h2>AI Chat Config</h2>
+                <label for="api-endpoint">API Endpoint</label>
+                <input type="text" id="api-endpoint" placeholder="example.com/api/v1" />
+                <label for="first-message">First Message</label>
+                <textarea
+                    name="first-message"
+                    id="instruction-prompt-block"
+                    cols="8"
+                ></textarea>
+                <label for="per-move-message">Per Move Message</label>
+                <textarea
+                    name="per-move-message"
+                    id="move-prompt-block"
+                ></textarea>
+            </aside>
+        </main>
+    </body>
+</html>
