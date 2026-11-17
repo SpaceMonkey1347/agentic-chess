@@ -14,28 +14,216 @@
     <body>
         <nav class="navbar">
             <ul>
-                <li><a href="/">Home</a></li>
+                <li><a href="/">Agentic Chess</a></li>
             </ul>
         </nav>
         <main class="game-wrapper">
-            <div>
-                <div class="chessground" id="board-1"></div>
+            <div class="board-container">
+                <div class="chessground" id="board-1">
+                    <!-- inside the board so it can reuse the board's piece art;
+                         chessground clears the board element on init and the
+                         dialog is put back afterwards by main.ts -->
+                    <div
+                        class="promotion"
+                        id="promotion"
+                        role="dialog"
+                        aria-label="Choose a promotion piece"
+                        hidden
+                    >
+                        <div class="promotion-column">
+                            <button
+                                type="button"
+                                class="promotion-choice"
+                                data-role="q"
+                            >
+                                <piece></piece>
+                            </button>
+                            <button
+                                type="button"
+                                class="promotion-choice"
+                                data-role="n"
+                            >
+                                <piece></piece>
+                            </button>
+                            <button
+                                type="button"
+                                class="promotion-choice"
+                                data-role="r"
+                            >
+                                <piece></piece>
+                            </button>
+                            <button
+                                type="button"
+                                class="promotion-choice"
+                                data-role="b"
+                            >
+                                <piece></piece>
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <aside id="ai-config">
-                <h2>AI Chat Config</h2>
-                <label for="api-endpoint">API Endpoint</label>
-                <input type="text" id="api-endpoint" placeholder="example.com/api/v1" />
-                <label for="first-message">First Message</label>
-                <textarea
-                    name="first-message"
-                    id="instruction-prompt-block"
-                    cols="8"
-                ></textarea>
-                <label for="per-move-message">Per Move Message</label>
-                <textarea
-                    name="per-move-message"
-                    id="move-prompt-block"
-                ></textarea>
+            <aside id="sidebar">
+                <div class="tabs">
+                    <input
+                        type="radio"
+                        class="radio-input"
+                        name="sidebar-tab"
+                        id="tab-ai-config"
+                        checked
+                    />
+                    <input
+                        type="radio"
+                        class="radio-input"
+                        name="sidebar-tab"
+                        id="tab-move-history"
+                    />
+                    <div class="tab-bar">
+                        <label class="tab" for="tab-ai-config">AI Config</label>
+                        <label class="tab" for="tab-move-history">
+                            Move History
+                        </label>
+                    </div>
+                    <section class="tab-panel" id="panel-ai-config">
+                        <div
+                            class="side-choice"
+                            role="radiogroup"
+                            aria-label="Play as"
+                        >
+                            <input
+                                type="radio"
+                                class="radio-input"
+                                name="player-side"
+                                id="side-white"
+                                value="white"
+                                checked
+                            />
+                            <input
+                                type="radio"
+                                class="radio-input"
+                                name="player-side"
+                                id="side-black"
+                                value="black"
+                            />
+                            <span class="field-label">Play as</span>
+                            <div class="side-options">
+                                <label for="side-white">White</label>
+                                <label for="side-black">Black</label>
+                            </div>
+                        </div>
+                        <label for="api-endpoint">API Endpoint</label>
+                        <input
+                            type="text"
+                            id="api-endpoint"
+                            placeholder="Example: http://localhost:1234/v1"
+                        />
+                        <label for="ai-model">Model Name</label>
+                        <input type="text" id="ai-model" placeholder="gpt-4o" />
+                        <button type="button">Test Connection</button>
+                        <output
+                            class="connection-result connection-result--ok"
+                            for="api-endpoint ai-model"
+                        >
+                            <span class="connection-dot"></span>
+                            <span class="connection-text">
+                                <strong>Connected</strong>
+                                <span class="connection-detail">
+                                    gpt-4o &middot; 200 OK &middot; 412 ms
+                                </span>
+                            </span>
+                        </output>
+                        <output
+                            class="connection-result connection-result--error"
+                            for="api-endpoint ai-model"
+                        >
+                            <span class="connection-dot"></span>
+                            <span class="connection-text">
+                                <strong>Connection Failed</strong>
+                                <span class="connection-detail">
+                                    ECONNREFUSED &middot; 0 ms
+                                </span>
+                                <code class="connection-error">
+                                    connect ECONNREFUSED 127.0.0.1:1234
+                                </code>
+                            </span>
+                        </output>
+                        <label for="prompt-template">Prompt Template</label>
+                        <textarea
+                            name="prompt-template"
+                            id="instruction-prompt-block"
+                            cols="8"
+                        ></textarea>
+                        <button type="button" class="primary" id="start-game">
+                            Start Game
+                        </button>
+                    </section>
+                    <section class="tab-panel" id="panel-move-history">
+                        <ol class="move-history">
+                            <li>
+                                <span class="move-no">1.</span>
+                                <span class="move">e4</span>
+                                <span class="move">e5</span>
+                            </li>
+                            <li>
+                                <span class="move-no">2.</span>
+                                <span class="move">Nf3</span>
+                                <span class="move">Nc6</span>
+                            </li>
+                            <li>
+                                <span class="move-no">3.</span>
+                                <span class="move">Bb5</span>
+                                <span class="move">a6</span>
+                            </li>
+                            <li>
+                                <span class="move-no">4.</span>
+                                <span class="move">Ba4</span>
+                                <span class="move">Nf6</span>
+                            </li>
+                            <li>
+                                <span class="move-no">5.</span>
+                                <span class="move">O-O</span>
+                                <span class="move">Be7</span>
+                            </li>
+                            <li>
+                                <span class="move-no">6.</span>
+                                <span class="move">Re1</span>
+                                <span class="move">b5</span>
+                            </li>
+                            <li>
+                                <span class="move-no">7.</span>
+                                <span class="move">Bb3</span>
+                                <span class="move">d6</span>
+                            </li>
+                            <li>
+                                <span class="move-no">8.</span>
+                                <span class="move">c3</span>
+                                <span class="move">O-O</span>
+                            </li>
+                        </ol>
+                        <p class="game-status" id="game-status" hidden></p>
+                        <div class="move-nav">
+                            <button type="button" aria-label="First move">
+                                &lt;&lt;
+                            </button>
+                            <button type="button" aria-label="Previous move">
+                                &lt;
+                            </button>
+                            <button type="button" aria-label="Next move">
+                                &gt;
+                            </button>
+                            <button type="button" aria-label="Last move">
+                                &gt;&gt;
+                            </button>
+                        </div>
+                        <div class="game-actions">
+                            <button type="button" class="primary" id="new-game">
+                                New Game
+                            </button>
+                            <button type="button" id="resign">Resign</button>
+                            <button type="button" id="draw">Draw</button>
+                        </div>
+                    </section>
+                </div>
             </aside>
         </main>
     </body>

@@ -2,12 +2,16 @@
 @use '@lichess-org/chessground/assets/chessground.brown.css' as *;
 @use '@lichess-org/chessground/assets/chessground.cburnett.css' as *;
 
+/* warm charcoal + soft gold, chosen to sit next to the wooden board */
 :root {
-    --bg: #18191b;
-    --panel-bg: #262422;
-    --line: #3a3735;
-    --muted: #9d9891;
-    --accent: #9b8cff;
+    --bg: #1a1816;
+    --panel-bg: #242120;
+    --line: #3b3633;
+    --text: #ece5da;
+    --muted: #a49c92;
+    --accent: #e0ad6a;
+    --ok: #82b48c;
+    --err: #cf7a74;
     --gap: 12px;
     --navbar-height: 52px;
     --sidebar-width: 340px;
@@ -21,19 +25,34 @@ html,
 body {
     margin: 0;
     background-color: var(--bg);
-    color: #ffe;
+    color: var(--text);
+}
+
+::selection {
+    color: var(--bg);
+    background-color: var(--accent);
 }
 
 body {
     min-height: 100dvh;
     display: flex;
     flex-direction: column;
+    /* faint lift at the top so the empty space doesn't read as flat black */
+    background-image: radial-gradient(
+        110% 80% at 50% 0,
+        #221e1a 0%,
+        transparent 70%
+    );
     font-family:
         system-ui,
         -apple-system,
         'Segoe UI',
         Roboto,
         sans-serif;
+}
+
+.hidden {
+    display: none;
 }
 
 .navbar {
@@ -54,9 +73,10 @@ body {
     }
 
     a {
-        color: #ffe;
+        color: var(--text);
         text-decoration: none;
         font-weight: 600;
+        transition: color 0.12s;
 
         &:hover {
             color: var(--accent);
@@ -92,28 +112,79 @@ body {
         calc(100dvh - var(--navbar-height) - 2 * var(--gap))
     );
     aspect-ratio: 1;
-    border-radius: 4px;
+    border-radius: 6px;
     /* chessground draws its coord labels partly outside the board box; clip
        them so they don't add a page scrollbar when the board fills the height */
     overflow: hidden;
-    box-shadow: 0 6px 24px #00000088;
+    box-shadow:
+        0 0 0 1px #ffffff14,
+        0 14px 34px #00000080;
 }
 
-#ai-config {
+#sidebar {
     flex: 0 0 var(--sidebar-width);
+    min-height: 0;
     display: flex;
     flex-direction: column;
-    gap: 4px;
     margin: 0;
-    padding: 16px;
     background-color: var(--panel-bg);
     border-radius: 6px;
-    overflow-y: auto;
+    overflow: hidden;
+    box-shadow: 0 0 0 1px #ffffff0a;
+}
 
-    h2 {
-        margin: 0 0 12px;
-        font-size: 1.1rem;
+.tabs {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+/* hidden radios driving the CSS-only tabs and the side picker */
+.radio-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.tab-bar {
+    flex: none;
+    display: flex;
+    border-bottom: 1px solid var(--line);
+}
+
+.tab {
+    flex: 1 1 0;
+    margin-bottom: -1px;
+    padding: 10px 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-align: center;
+    color: var(--muted);
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    user-select: none;
+    transition:
+        color 0.12s,
+        border-color 0.12s;
+
+    &:hover {
+        color: var(--text);
     }
+}
+
+.tab-panel {
+    display: none;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 4px;
+    min-height: 0;
+    padding: 16px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--line) transparent;
 
     label {
         margin-top: 8px;
@@ -121,31 +192,370 @@ body {
         color: var(--muted);
     }
 
+    /* same look as the labels above, for text that isn't tied to a control */
+    .field-label {
+        margin-top: 8px;
+        font-size: 0.8rem;
+        color: var(--muted);
+    }
+
+    /* side picker: two radio labels shown as a segmented control */
+    .side-options {
+        display: flex;
+        gap: 6px;
+        margin-top: 4px;
+
+        label {
+            flex: 1 1 0;
+            margin: 0;
+            padding: 8px 0;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-align: center;
+            color: var(--muted);
+            background-color: var(--bg);
+            border: 1px solid var(--line);
+            border-radius: 4px;
+            cursor: pointer;
+            user-select: none;
+            transition:
+                color 0.12s,
+                border-color 0.12s,
+                background-color 0.12s;
+
+            &:hover {
+                color: var(--text);
+            }
+        }
+    }
+
+    #side-white:checked ~ .side-options [for='side-white'],
+    #side-black:checked ~ .side-options [for='side-black'] {
+        color: var(--bg);
+        background-color: var(--accent);
+        border-color: var(--accent);
+    }
+
     input,
     textarea {
         width: 100%;
         padding: 8px;
         font: inherit;
-        color: #ffe;
+        color: var(--text);
         background-color: var(--bg);
         border: 1px solid var(--line);
         border-radius: 4px;
         resize: vertical;
+        transition:
+            border-color 0.12s,
+            box-shadow 0.12s;
+
+        &::placeholder {
+            color: var(--muted);
+        }
 
         &:focus {
             outline: none;
             border-color: var(--accent);
+            box-shadow: 0 0 0 3px #e0ad6a26;
         }
     }
 
     textarea {
         min-height: 80px;
     }
+
+    /* secondary action: quiet outline that lights up gold on hover */
+    button {
+        margin-top: 8px;
+        padding: 9px 12px;
+        font: inherit;
+        font-weight: 600;
+        color: var(--text);
+        background-color: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        cursor: pointer;
+        transition:
+            color 0.12s,
+            border-color 0.12s,
+            background-color 0.12s;
+
+        &:hover {
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        &:active {
+            background-color: #2b2724;
+        }
+
+        &:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 1px;
+        }
+    }
+
+    /* primary action: solid gold with dark text */
+    button.primary {
+        color: var(--bg);
+        background-color: var(--accent);
+        border-color: var(--accent);
+
+        &:hover {
+            background-color: #ecc287;
+            border-color: #ecc287;
+        }
+
+        &:active {
+            background-color: #cf9a53;
+            border-color: #cf9a53;
+        }
+    }
+
+    /* connection result — dummy values, swap once the endpoint is probed */
+    .connection-result {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        margin-top: 4px;
+        padding: 8px 10px;
+        background-color: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 4px;
+
+        .connection-dot {
+            flex: none;
+            width: 8px;
+            height: 8px;
+            margin-top: 4px;
+            border-radius: 50%;
+        }
+
+        .connection-text {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
+
+        strong {
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .connection-detail {
+            font-size: 0.75rem;
+            color: var(--muted);
+        }
+
+        /* raw error text, boxed like the form fields above it */
+        .connection-error {
+            margin-top: 2px;
+            padding: 5px 6px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 0.7rem;
+            line-height: 1.4;
+            overflow-wrap: anywhere;
+            border: 1px solid #ffffff14;
+            border-radius: 3px;
+        }
+    }
+
+    .connection-result--ok {
+        background-color: #1d241d;
+        border-color: #33402f;
+
+        .connection-dot {
+            background-color: var(--ok);
+            box-shadow: 0 0 0 3px #82b48c26;
+        }
+
+        strong {
+            color: var(--ok);
+        }
+    }
+
+    .connection-result--error {
+        background-color: #26191a;
+        border-color: #4a2f31;
+
+        .connection-dot {
+            background-color: var(--err);
+            box-shadow: 0 0 0 3px #c9736e26;
+        }
+
+        strong,
+        .connection-error {
+            color: var(--err);
+        }
+
+        .connection-error {
+            background-color: #00000033;
+        }
+    }
 }
 
-#instruction-prompt-block,
-#move-prompt-block {
+/* CSS-only tabs: the checked radio switches the visible label + panel */
+#tab-ai-config:checked ~ .tab-bar [for='tab-ai-config'],
+#tab-move-history:checked ~ .tab-bar [for='tab-move-history'] {
+    color: var(--text);
+    border-bottom-color: var(--accent);
+}
+
+#tab-ai-config:focus-visible ~ .tab-bar [for='tab-ai-config'],
+#tab-move-history:focus-visible ~ .tab-bar [for='tab-move-history'] {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+}
+
+#tab-ai-config:checked ~ #panel-ai-config,
+#tab-move-history:checked ~ #panel-move-history {
+    display: flex;
+}
+
+#instruction-prompt-block {
     width: 100%;
+    field-sizing: content;
+    min-height: 3lh;
+    max-height: 16lh;
+    resize: none;
+}
+
+/* move history: scrolling move list with the nav buttons pinned to the bottom */
+#panel-move-history {
+    padding: 8px 0 0;
+    overflow: hidden;
+
+    .move-history {
+        flex: 1 1 auto;
+        min-height: 0;
+        margin: 0;
+        padding: 0 8px;
+        overflow-y: auto;
+        list-style: none;
+        font-variant-numeric: tabular-nums;
+        scrollbar-width: thin;
+        scrollbar-color: var(--line) transparent;
+
+        li {
+            display: grid;
+            grid-template-columns: 2.5em 1fr 1fr;
+            align-items: center;
+            border-radius: 4px;
+
+            &:nth-child(odd) {
+                background-color: #ffffff0a;
+            }
+        }
+
+        .move-no {
+            padding: 5px 8px;
+            font-size: 0.8rem;
+            color: var(--muted);
+        }
+
+        .move {
+            padding: 5px 8px;
+            font-size: 0.9rem;
+        }
+    }
+
+    .move-nav {
+        flex: none;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+        padding: 8px;
+        border-top: 1px solid var(--line);
+
+        /* reuses the .tab-panel button look, sized for the 4-column grid row */
+        button {
+            margin: 0;
+            padding: 8px 0;
+        }
+    }
+
+    /* the result, shown under the move list once the game is over */
+    .game-status {
+        flex: none;
+        margin: 0;
+        padding: 10px 16px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--text);
+        border-top: 1px solid var(--line);
+    }
+
+    .game-actions {
+        flex: none;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+        padding: 8px;
+        border-top: 1px solid var(--line);
+
+        button {
+            margin: 0;
+            padding: 8px 0;
+            font-size: 0.85rem;
+        }
+
+        /* resign is the destructive one */
+        #resign:hover {
+            color: var(--err);
+            border-color: var(--err);
+        }
+    }
+}
+
+/* promotion dialog: markup lives inside .cg-wrap so it reuses the board pieces */
+.promotion {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    background-color: #00000073;
+
+    &[hidden] {
+        display: none;
+    }
+
+    .promotion-column {
+        position: absolute;
+        left: var(--promotion-left, 0%);
+        top: var(--promotion-top, 0%);
+        width: 12.5%;
+        height: 50%;
+        display: flex;
+        flex-direction: var(--promotion-flow, column);
+    }
+
+    .promotion-choice {
+        flex: 1 1 0;
+        padding: 0;
+        /* matches the board's light squares */
+        background-color: #f0d9b5;
+        border: 0;
+        cursor: pointer;
+        transition: background-color 0.12s;
+
+        &:hover,
+        &:focus-visible {
+            outline: none;
+            background-color: var(--accent);
+        }
+
+        /* the board stylesheet paints the pieces but sizes them for a square */
+        piece {
+            display: block;
+            position: static;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            z-index: auto;
+            pointer-events: none;
+        }
+    }
 }
 
 /* stack the sidebar under the board on narrow screens */
@@ -155,7 +565,7 @@ body {
         justify-content: flex-start;
     }
 
-    .game-wrapper > div {
+    .game-wrapper > .board-container {
         width: 100%;
     }
 
@@ -163,7 +573,7 @@ body {
         width: 100%;
     }
 
-    #ai-config {
+    #sidebar {
         flex: 1 1 auto;
         width: 100%;
     }
