@@ -1,17 +1,8 @@
 import type { Chess } from 'chess.js'
+import type { Side } from './game'
 
 type keywordEntry =
     string | string[] | ((game: Chess) => string | string[] | undefined)
-
-// default values
-export let playerColor: 'white' | 'black' = 'white'
-export let aiColor: 'white' | 'black' = 'black'
-
-/** set the side the human plays; the ai takes the other one */
-export function setPlayerSide(side: 'white' | 'black'): void {
-    playerColor = side
-    aiColor = side === 'white' ? 'black' : 'white'
-}
 
 const fen = (game: Chess): string => {
     return game.fen()
@@ -34,10 +25,8 @@ const lastMove = (game: Chess): string => {
     return history[history.length - 1] || ''
 }
 
+/** the keywords that come from the position alone */
 const keywords = new Map<string, keywordEntry>([
-    // read through getters so a side picked later shows up in the prompt
-    ['playerColor', () => playerColor],
-    ['aiColor', () => aiColor],
     ['FEN', fen],
     ['PGN', pgn],
     ['moveHistory', moveHistory],
@@ -45,9 +34,23 @@ const keywords = new Map<string, keywordEntry>([
     ['legalMoves', legalMoves],
 ])
 
-export function substituteKeywords(game: Chess, prompt: string): string {
+/**
+ * Fill the [keyword] placeholders in `prompt`. The side is passed in rather
+ * than remembered here: the sidebar is the only place a side gets picked.
+ */
+export function substituteKeywords(
+    game: Chess,
+    prompt: string,
+    playerColor: Side
+): string {
+    const aiColor: Side = playerColor === 'white' ? 'black' : 'white'
+    const entries = new Map<string, keywordEntry>([
+        ['playerColor', playerColor],
+        ['aiColor', aiColor],
+        ...keywords,
+    ])
     return prompt.replaceAll(/\[\s*([a-zA-Z]+)\s*\]/g, (fullMatch, key) => {
-        const entry = keywords.get(key)
+        const entry = entries.get(key)
         if (!entry) {
             return fullMatch
         }
@@ -58,9 +61,10 @@ export function substituteKeywords(game: Chess, prompt: string): string {
     })
 }
 
-export const defultPromt = `Let's play chess! I play as [playerColor] and you play as [aiColor]. \
+export const defultMovePrompt = `Let's play chess! \
+I play as [playerColor] and you play as [aiColor]. \
 Use standard algebraic notation for all moves. Strictly follow all FIDE chess rules. \
-Output ONLY your move, no move numbers, no board, no explanations. \
+Output ONLY your move, no move numbers, no '...' no board, no explanations. \
 Your move must be in legal moves.
 
 FEN: [FEN]
@@ -68,3 +72,14 @@ FEN: [FEN]
 legal moves: [[legalMoves]]
 
 Your move.`
+
+export const defaultDrawOfferPrompt = `You are currently playing chess, \
+You are playing as [aiColor] and your opponent is playing as [playerColor]. \
+Your opponent is offering a draw. Output ONLY either yes or no. \
+Do NOT output ANYTHING other than yes or no.
+
+FEN: [FEN]
+
+legal moves: [[legalMoves]]
+
+Do you accept the draw?`

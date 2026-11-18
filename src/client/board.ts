@@ -1,174 +1,206 @@
-import type { Key } from '@lichess-org/chessground/types'
+import { Chessground } from '@lichess-org/chessground'
 
-import { createBoardView } from './board-view.ts'
-import type { MoveSource } from './bot.ts'
-import { createGame } from './game.ts'
+import type { Config } from '@lichess-org/chessground/config'
+import type { Color, Key } from '@lichess-org/chessground/types'
+
 import type { PromotionPiece } from './game.ts'
-import { askPromotion } from './promotion.ts'
-import { playerColor, setPlayerSide } from './prompt.ts'
-import type { PositionView } from './view.ts'
 
-/** how long the bot "thinks" before replying, so its move animates */
-const BOT_MOVE_DELAY_MS = 300
+/* ------------------------------------------------------------------ *
+ * the position, as the board needs to see it
+ * ------------------------------------------------------------------ */
 
-export interface Board {
-    /** reset and start a new game with the player on the given side */
-    startGame(side: 'white' | 'black'): void
-    /** the player gives up */
-    resign(): void
-    /** the player offers a draw */
-    offerDraw(): void
+/** Everything the board needs to draw one position. Plain data, no DOM. */
+export interface PositionView {
+    fen: string
+    /** whose turn it is in this position */
+    turn: 'w' | 'b'
+    /** the side shown at the bottom */
+    orientation: 'white' | 'black'
+    /** the side allowed to pick pieces up */
+    movableColor: 'white' | 'black'
+    /** destinations for the side to move; empty leaves only premoves */
+    legalDests: Map<Key, Key[]>
+    lastMove?: [Key, Key]
+    check: boolean
+    /** false freezes the board (game over, or showing an old position) */
+    interactive: boolean
+}
+
+/** The single place that knows chessground's config shape. */
+export function toGroundConfig(view: PositionView): Config {
+    return {
+        fen: view.fen,
+        orientation: view.orientation,
+        turnColor: view.turn === 'w' ? 'white' : 'black',
+        check: view.check,
+        // always passed, even as undefined, so a stale highlight is cleared
+        lastMove: view.lastMove,
+        movable: {
+            free: false,
+            color: view.movableColor,
+            dests: view.legalDests,
+        },
+        // premoves belong to the live position; a reviewed one must not take them
+        premovable: { enabled: view.interactive },
+        draggable: { enabled: view.interactive },
+        selectable: { enabled: view.interactive },
+    }
+}
+
+/* ------------------------------------------------------------------ *
+ * the chessground instance
+ * ------------------------------------------------------------------ */
+
+export interface BoardView {
+    /** draw a position */
+    render(view: PositionView): void
+    /** drop any selection or queued premove */
+    cancelMove(): void
+    /** play a queued premove, if the position allows it */
+    playPremove(): void
+}
+
+export interface BoardViewOptions {
+    /** the player dropped a piece somewhere */
+    onMove(orig: Key, dest: Key): void
+}
+
+/** The only module that talks to chessground. */
+export function createBoardView(
+    element: HTMLElement,
+    { onMove }: BoardViewOptions
+): BoardView {
+    // chessground empties the board element when it renders, so the promotion
+    // dialog (which sits inside .cg-wrap to reuse the board's piece art) is
+    // grabbed first and put back once the board has been built
+    const promotionEl = document.getElementById('promotion')
+
+    const ground = Chessground(element, {
+        draggable: { enabled: false },
+        selectable: { enabled: false },
+        drawable: { enabled: true },
+        // let the player queue a premove while the bot is thinking; the session
+        // plays it back with playPremove() once a reply lands
+        premovable: { enabled: true },
+        movable: {
+            free: false,
+            dests: new Map(),
+            events: {
+                after: (orig: Key, dest: Key) => onMove(orig, dest),
+            },
+        },
+    })
+
+    if (promotionEl) {
+        element.appendChild(promotionEl)
+    }
+
+    return {
+        render: (view: PositionView) => ground.set(toGroundConfig(view)),
+        cancelMove: () => ground.cancelMove(),
+        playPremove: () => ground.playPremove(),
+    }
+}
+
+/* ------------------------------------------------------------------ *
+ * the promotion dialog
+ * ------------------------------------------------------------------ */
+
+/** chess.js role letter -> the piece class painted by the board stylesheet */
+const ROLE_NAMES: Record<PromotionPiece, string> = {
+    q: 'queen',
+    r: 'rook',
+    b: 'bishop',
+    n: 'knight',
+}
+
+export interface PromotionRequest {
+    /** the side whose pawn is promoting */
+    color: Color
+    /** the square the pawn lands on */
+    key: Key
+    /** the side the board is shown from */
+    orientation: Color
+    /** the board element the dialog is drawn over */
+    board: HTMLElement
 }
 
 /**
- * Runs a game against `bot` on the board in `element`: the player moves with
- * the mouse, the bot answers, and promotions go through the promotion dialog.
+ * Asks the player which piece to promote to. Resolves with a chess.js role
+ * letter, or null when the promotion is cancelled (click outside / escape).
  */
-export function createBoard(element: HTMLElement, bot: MoveSource): Board {
-    const game = createGame()
-    const view = createBoardView(element, {
-        onMove: (orig: Key, dest: Key) => onPlayerMove(orig, dest),
-    })
+export function askPromotion({
+    color,
+    key,
+    orientation,
+    board,
+}: PromotionRequest): Promise<PromotionPiece | null> {
+    const dialog = document.getElementById('promotion')
+    const column = dialog?.querySelector<HTMLElement>('.promotion-column')
+    if (!dialog || !column) {
+        return Promise.resolve(null)
+    }
 
-    let inProgress = false
-    let botMoveToken = 0
+    // chessground empties the board element on a full redraw, so make sure the
+    // dialog is still where the stylesheet expects it
+    if (dialog.parentElement !== board) {
+        board.appendChild(dialog)
+    }
 
-    const playerSide = (): 'w' | 'b' => (playerColor === 'white' ? 'w' : 'b')
-    const isPlayerTurn = () => game.turn() === playerSide() && !game.isOver()
+    const file = key.charCodeAt(0) - 97
+    const rank = Number(key[1])
+    const flipped = orientation === 'black'
+    const row = flipped ? rank - 1 : 8 - rank
+    const square = 100 / 8
 
-    /** the live position, as the board needs to see it */
-    const liveView = (): PositionView => ({
-        fen: game.fen(),
-        turn: game.turn(),
-        orientation: playerColor,
-        movableColor: playerColor,
-        // no destinations while it is the bot's move, so a drag can only queue
-        // a premove
-        legalDests: isPlayerTurn() ? game.legalDests() : new Map(),
-        lastMove: game.lastMove(),
-        check: game.isCheck(),
-        interactive: !game.isOver(),
-    })
+    // the column covers four squares and sits against the promoting rank, with
+    // the queen next to the pawn — lichess' layout
+    const downward = row < 4
+    column.style.setProperty(
+        '--promotion-left',
+        `${(flipped ? 7 - file : file) * square}%`
+    )
+    column.style.setProperty(
+        '--promotion-top',
+        `${(downward ? row : row - 3) * square}%`
+    )
+    column.style.setProperty(
+        '--promotion-flow',
+        downward ? 'column' : 'column-reverse'
+    )
 
-    /** show the result under the move list */
-    const renderResult = () => {
-        const el = document.getElementById('game-status')
-        if (!el) {
-            return
+    for (const choice of dialog.querySelectorAll<HTMLElement>(
+        '.promotion-choice'
+    )) {
+        const role = choice.dataset.role as PromotionPiece
+        const piece = choice.querySelector('piece')
+        if (piece) {
+            piece.className = `${color} ${ROLE_NAMES[role]}`
         }
-        const text = game.result()
-        el.textContent = text ?? ''
-        el.hidden = !text
     }
 
-    const render = () => {
-        view.render(liveView())
-        renderResult()
-    }
+    dialog.hidden = false
+    dialog.querySelector<HTMLButtonElement>('.promotion-choice')?.focus()
 
-    /** drop any queued bot reply, e.g. when a new game starts */
-    const cancelBotMove = () => {
-        botMoveToken++
-    }
-
-    const playBotMove = async () => {
-        if (game.isOver()) {
-            return
+    return new Promise((resolve) => {
+        const close = (choice: PromotionPiece | null) => {
+            dialog.hidden = true
+            dialog.removeEventListener('click', onClick)
+            document.removeEventListener('keydown', onKey)
+            resolve(choice)
         }
-        const san = await bot.pickMove(game.chess())
-        // an empty or illegal reply leaves the board alone
-        if (!san || !game.playSan(san)) {
-            return
+        const onClick = (event: MouseEvent) => {
+            const button = (
+                event.target as HTMLElement
+            ).closest<HTMLButtonElement>('.promotion-choice')
+            close(button ? (button.dataset.role as PromotionPiece) : null)
         }
-        render()
-        // a premove queued during the bot's turn plays now: chessground fires
-        // its move event, so the board, the game and the next reply all follow.
-        // it also clears any premove that the reply made illegal.
-        view.playPremove()
-    }
-
-    const scheduleBotMove = () => {
-        const token = ++botMoveToken
-        window.setTimeout(() => {
-            if (token === botMoveToken) {
-                void playBotMove()
+        const onKey = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                close(null)
             }
-        }, BOT_MOVE_DELAY_MS)
-    }
-
-    const applyPlayerMove = (
-        orig: Key,
-        dest: Key,
-        promotion?: PromotionPiece
-    ) => {
-        if (!game.play(orig, dest, promotion)) {
-            // chessground should only hand over legal moves; snap back if not
-            render()
-            return
         }
-        render()
-        if (!game.isOver()) {
-            scheduleBotMove()
-        }
-    }
-
-    const onPlayerMove = async (orig: Key, dest: Key) => {
-        if (game.promotionPieces(orig, dest).length === 0) {
-            applyPlayerMove(orig, dest)
-            return
-        }
-        const chosen = await askPromotion({
-            color: game.turn() === 'w' ? 'white' : 'black',
-            key: dest,
-            orientation: playerColor,
-            board: element,
-        })
-        if (!chosen) {
-            // cancelled — chessground already moved the pawn, so put it back
-            render()
-            return
-        }
-        applyPlayerMove(orig, dest, chosen)
-    }
-
-    /** stop the game where it stands: freeze the board, drop queued replies */
-    const finish = () => {
-        inProgress = false
-        cancelBotMove()
-        // drop any premove or selection along with the pending reply
-        view.cancelMove()
-        render()
-    }
-
-    const resign = () => {
-        if (!inProgress || game.isOver()) {
-            return
-        }
-        game.conclude(`${playerColor === 'white' ? 'White' : 'Black'} resigned`)
-        finish()
-    }
-
-    const offerDraw = () => {
-        if (!inProgress || game.isOver()) {
-            return
-        }
-        // the move source has no opinion on draws yet, so an offer is accepted
-        game.conclude('Draw agreed')
-        finish()
-    }
-
-    const startGame = (side: 'white' | 'black') => {
-        cancelBotMove()
-        // drop any premove or selection left over from the previous game
-        view.cancelMove()
-        inProgress = true
-        setPlayerSide(side)
-        game.reset()
-        render()
-        if (!isPlayerTurn()) {
-            scheduleBotMove()
-        }
-    }
-
-    return { startGame, resign, offerDraw }
+        dialog.addEventListener('click', onClick)
+        document.addEventListener('keydown', onKey)
+    })
 }

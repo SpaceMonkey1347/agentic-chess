@@ -2,6 +2,9 @@ import { Chess } from 'chess.js'
 
 import type { Key } from '@lichess-org/chessground/types'
 
+/** the side a player sits on */
+export type Side = 'white' | 'black'
+
 /** the promotion choices, using the role letters chess.js reports */
 export type PromotionPiece = 'q' | 'r' | 'b' | 'n'
 
@@ -15,6 +18,14 @@ export interface MoveRecord {
     after: string
 }
 
+/** a position from the game's past, enough to put back on the board */
+export interface PositionSnapshot {
+    fen: string
+    turn: 'w' | 'b'
+    lastMove?: [Key, Key]
+    check: boolean
+}
+
 /** The game: rules, move list and outcome. Knows nothing about rendering. */
 export interface Game {
     /** the underlying chess.js game, for move sources and prompt templates */
@@ -23,6 +34,8 @@ export interface Game {
     fen(): string
     /** every move played so far, in order */
     moves(): MoveRecord[]
+    /** the position after `ply` moves have been played; 0 is the start */
+    positionAt(ply: number): PositionSnapshot
     /** play a move; false when it is not legal */
     play(from: Key, to: Key, promotion?: PromotionPiece): boolean
     /** play a move given in standard algebraic notation; false when illegal */
@@ -116,6 +129,22 @@ export function createGame(): Game {
         }
     }
 
+    const positionAt = (ply: number): PositionSnapshot => {
+        const history = game.history({ verbose: true })
+        const move = history[Math.max(0, Math.min(ply, history.length)) - 1]
+        if (!move) {
+            // chess.js keeps no entry for the start position, so rebuild it
+            return { fen: new Chess().fen(), turn: 'w', check: false }
+        }
+        const board = new Chess(move.after)
+        return {
+            fen: move.after,
+            turn: board.turn(),
+            lastMove: [move.from, move.to],
+            check: board.isCheck(),
+        }
+    }
+
     const moves = (): MoveRecord[] =>
         game.history({ verbose: true }).map((move) => ({
             san: move.san,
@@ -131,6 +160,7 @@ export function createGame(): Game {
         turn: () => game.turn(),
         fen: () => game.fen(),
         moves,
+        positionAt,
         play,
         playSan,
         promotionPieces,
@@ -147,4 +177,23 @@ export function createGame(): Game {
             game.reset()
         },
     }
+}
+
+/**
+ * Supplies a move for the AI side, as SAN. The endpoint-backed player will
+ * implement this same interface, so the game loop won't have to change.
+ */
+export interface MoveSource {
+    pickMove(game: Chess): Promise<string | null>
+}
+
+/** Placeholder player: plays a random legal move. */
+export const randomBot: MoveSource = {
+    async pickMove(game: Chess): Promise<string | null> {
+        const moves = game.moves()
+        if (moves.length === 0) {
+            return null
+        }
+        return moves[Math.floor(Math.random() * moves.length)] ?? null
+    },
 }

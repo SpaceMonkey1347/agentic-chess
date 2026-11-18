@@ -229,6 +229,7 @@ body {
         }
     }
 
+    #side-random:checked ~ .side-options [for='side-random'],
     #side-white:checked ~ .side-options [for='side-white'],
     #side-black:checked ~ .side-options [for='side-black'] {
         color: var(--bg);
@@ -458,6 +459,17 @@ body {
         .move {
             padding: 5px 8px;
             font-size: 0.9rem;
+            cursor: pointer;
+
+            &:hover {
+                color: var(--accent);
+            }
+
+            /* the move that produced the position on the board */
+            &.is-current {
+                color: var(--accent);
+                font-weight: 600;
+            }
         }
     }
 
@@ -473,6 +485,11 @@ body {
         button {
             margin: 0;
             padding: 8px 0;
+        }
+
+        button:disabled {
+            opacity: 0.4;
+            cursor: default;
         }
     }
 
