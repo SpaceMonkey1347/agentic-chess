@@ -188,7 +188,8 @@ body {
     scrollbar-color: var(--line) transparent;
 
     /* .field-label: for text that isn't tied to a control */
-    label, .field-label {
+    label,
+    .field-label {
         margin-top: 1rem;
         font-size: 0.8rem;
         color: var(--muted);
@@ -258,7 +259,7 @@ body {
     }
 
     input {
-      cursor: pointer;
+        cursor: pointer;
     }
 
     textarea {
@@ -336,7 +337,9 @@ body {
             white-space: nowrap;
             display: none;
             opacity: 0;
-            transition: opacity 0.3s, display 0.3s allow-discrete;
+            transition:
+                opacity 0.3s,
+                display 0.3s allow-discrete;
         }
         &:hover::before {
             opacity: 1;
@@ -349,13 +352,13 @@ body {
 
     button.icon-btn--info {
         &::before {
-            content: "Click for help";
+            content: 'Click for help';
         }
     }
 
     button.icon-btn--reset {
         &::before {
-            content: "Reset to default";
+            content: 'Reset to default';
         }
     }
 
@@ -467,7 +470,6 @@ body {
             outline-offset: 2px;
         }
     }
-
 
     /* connection result — dummy values, swap once the endpoint is probed */
     .connection-result {

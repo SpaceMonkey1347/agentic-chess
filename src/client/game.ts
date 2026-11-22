@@ -199,5 +199,5 @@ export const randomBot: MoveSource = {
     },
     async takeTurn(game: Chess): Promise<string | null> {
         return this.pickMove(game)
-    }
+    },
 }

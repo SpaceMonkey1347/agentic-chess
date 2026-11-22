@@ -14,7 +14,9 @@ declare global {
 
 window.htmx = htmx
 
-const apiEndpointEl = document.getElementById('api-endpoint') as HTMLInputElement
+const apiEndpointEl = document.getElementById(
+    'api-endpoint'
+) as HTMLInputElement
 const apiKeyEl = document.getElementById('api-key') as HTMLInputElement
 const apiKeyToggleEl = document.getElementById(
     'api-key-visibility-toggle'

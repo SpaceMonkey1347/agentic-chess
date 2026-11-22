@@ -4,17 +4,19 @@ import type { MoveSource, Side } from './game.ts'
 import { substituteKeywords, defultMovePrompt } from './prompt.ts'
 
 export type EndpointConfig = {
-    endpoint: string,
-    apiKey: string,
-    model: string,
-    prompt: string,
+    endpoint: string
+    apiKey: string
+    model: string
+    prompt: string
 }
 
-const sanRegex = /\b(?:O-O(?:-O)?|[KQRBN]?[a-h]?[1-8]?x?[a-h][1-8](?:=[QRBN])?[+#]?)\b/g;
-const keywordRegex = /\b(yes|no|accept|decline|draw|\(=\)|resign|0-1|1-0|1\/2-1\/2|0-0|1\/2-0|0-1\/2)\b/gi
+const sanRegex =
+    /\b(?:O-O(?:-O)?|[KQRBN]?[a-h]?[1-8]?x?[a-h][1-8](?:=[QRBN])?[+#]?)\b/g
+const keywordRegex =
+    /\b(yes|no|accept|decline|draw|\(=\)|resign|0-1|1-0|1\/2-1\/2|0-0|1\/2-0|0-1\/2)\b/gi
 
 function extractMove(prompt: string): string | null {
-    const moves = prompt.match(sanRegex) || '';
+    const moves = prompt.match(sanRegex) || ''
     return moves[moves?.length - 1]
 }
 
@@ -54,4 +56,3 @@ export function createEndpointBot(getConfig: () => EndpointConfig): MoveSource {
     }
     return endpointBot
 }
-
