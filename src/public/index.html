@@ -85,6 +85,73 @@
                         </label>
                     </div>
                     <section class="tab-panel" id="panel-ai-config">
+                        <label for="api-endpoint">
+                            <span>API Endpoint</span>
+                        </label>
+                        <input
+                            type="text"
+                            id="api-endpoint"
+                            placeholder="Example: http://localhost:1234/v1"
+                        />
+                        <div class="field-row">
+                            <label for="api-key">API Key</label>
+                            <label
+                                for="api-key-visibility-toggle"
+                                class="icon-toggle-label"
+                            >
+                                <input
+                                    type="checkbox"
+                                    class="icon-toggle"
+                                    id="api-key-visibility-toggle"
+                                    aria-label="Show API key"
+                                />
+                                <span
+                                    class="show-hide-img"
+                                    aria-hidden="true"
+                                ></span>
+                            </label>
+                        </div>
+                        <input
+                            type="password"
+                            id="api-key"
+                            name="api-key"
+                            placeholder="sk-..."
+                            autocomplete="off"
+                            autocapitalize="off"
+                            spellcheck="false"
+                        />
+                        <label for="ai-model">Model Name</label>
+                        <input type="text" id="ai-model" placeholder="gpt-4o" />
+                        <label for="allow-draw-offer-toggle" class="toggle-option">
+                            <input type="checkbox" id="allow-draw-offer-toggle">
+                            <span>Allow Draw Offer</span>
+                            <div></div>
+                        </label>
+                        <label for="allow-resign-toggle" class="toggle-option">
+                            <input type="checkbox" id="allow-resign-toggle">
+                            <span>Allow Resign</span>
+                            <div></div>
+                        </label>
+                        <label for="move-template">
+                            <span>Move Template</span>
+                            <button class="icon-btn icon-btn--info">?</button>
+                            <button id="reset-move-template" class="icon-btn icon-btn--reset">↺</button>
+                        </label>
+                        <textarea
+                            name="move-template"
+                            id="move-prompt-block"
+                            cols="8"
+                        ></textarea>
+                        <label for="draw-template">
+                            <span>Draw Template</span>
+                            <button class="icon-btn icon-btn--info">?</button>
+                            <button id="reset-draw-template" class="icon-btn icon-btn--reset">↺</button>
+                        </label>
+                        <textarea
+                            name="draw-template"
+                            id="draw-prompt-block"
+                            cols="8"
+                        ></textarea>
                         <div
                             class="side-choice"
                             role="radiogroup"
@@ -112,39 +179,13 @@
                                 id="side-black"
                                 value="black"
                             />
-                            <span class="field-label">Play as</span>
+                            <div class="field-label">Play as</div>
                             <div class="side-options">
                                 <label for="side-random">Random</label>
                                 <label for="side-white">White</label>
                                 <label for="side-black">Black</label>
                             </div>
                         </div>
-                        <label for="api-endpoint">API Endpoint</label>
-                        <input
-                            type="text"
-                            id="api-endpoint"
-                            placeholder="Example: http://localhost:1234/v1"
-                        />
-                        <label for="api-key">API Key</label>
-                        <input
-                            type="text"
-                            id="api-key"
-                            placeholder="your-api-key (optional)"
-                        />
-                        <label for="ai-model">Model Name</label>
-                        <input type="text" id="ai-model" placeholder="gpt-4o" />
-                        <label for="move-template">Move Template</label>
-                        <textarea
-                            name="move-template"
-                            id="move-prompt-block"
-                            cols="8"
-                        ></textarea>
-                        <label for="draw-template">Draw Template</label>
-                        <textarea
-                            name="draw-template"
-                            id="draw-prompt-block"
-                            cols="8"
-                        ></textarea>
                         <button type="button" class="primary" id="start-game">
                             Start Game
                         </button>

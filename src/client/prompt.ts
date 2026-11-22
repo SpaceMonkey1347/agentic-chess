@@ -82,4 +82,4 @@ FEN: [FEN]
 
 legal moves: [[legalMoves]]
 
-Do you accept the draw?`
+Do you accept the draw offer? (yes or no)`

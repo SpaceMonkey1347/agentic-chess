@@ -29,8 +29,8 @@
     "concurrently": "^10.0.7",
     "esbuild": "^0.28.2",
     "esbuild-sass-plugin": "^3.7.0",
-    "prettier": "^3.9.10",
-    "sass": "^1.108.1",
+    "prettier": "^3.10.1",
+    "sass": "^1.108.2",
     "typescript": "^7.0.2"
   }
 }

@@ -11,7 +11,7 @@ export type EndpointConfig = {
 }
 
 const sanRegex = /\b(?:O-O(?:-O)?|[KQRBN]?[a-h]?[1-8]?x?[a-h][1-8](?:=[QRBN])?[+#]?)\b/g;
-const keywordRegex = /yes|no|draw|resign|0-1|1-0|1\/2-1\/2/gi
+const keywordRegex = /\b(yes|no|accept|decline|draw|\(=\)|resign|0-1|1-0|1\/2-1\/2|0-0|1\/2-0|0-1\/2)\b/gi
 
 function extractMove(prompt: string): string | null {
     const moves = prompt.match(sanRegex) || '';
@@ -47,6 +47,9 @@ export function createEndpointBot(getConfig: () => EndpointConfig): MoveSource {
                 )
             }
             return move
+        },
+        async takeTurn(game: Chess): Promise<string | null> {
+            return this.pickMove(game)
         },
     }
     return endpointBot

@@ -16,7 +16,19 @@ window.htmx = htmx
 
 const apiEndpointEl = document.getElementById('api-endpoint') as HTMLInputElement
 const apiKeyEl = document.getElementById('api-key') as HTMLInputElement
+const apiKeyToggleEl = document.getElementById(
+    'api-key-visibility-toggle'
+) as HTMLInputElement | null
 const modelNameEl = document.getElementById('ai-model') as HTMLInputElement
+
+apiKeyToggleEl?.addEventListener('change', () => {
+    const revealed = apiKeyToggleEl.checked
+    apiKeyEl.type = revealed ? 'text' : 'password'
+    apiKeyToggleEl.setAttribute(
+        'aria-label',
+        revealed ? 'Hide API key' : 'Show API key'
+    )
+})
 
 const moveTemplateEl = document.getElementById(
     'move-prompt-block'

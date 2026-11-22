@@ -1,0 +1,7 @@
+<svg width="50" height="30" viewBox="0 0 50 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+<circle cx="25" cy="15" r="8" fill="black"/>
+<mask id="stroke0_3119_45" fill="white">
+<path d="M25 0C35.683 0 45.0095 6.03327 50 15C45.0095 23.9667 35.683 30 25 30C14.317 30 4.9905 23.9667 0 15C4.9905 6.03325 14.317 3.19559e-05 25 0Z"/>
+</mask>
+<path d="M25 0C35.683 0 45.0095 6.03327 50 15C45.0095 23.9667 35.683 30 25 30C14.317 30 4.9905 23.9667 0 15C4.9905 6.03325 14.317 3.19559e-05 25 0Z" stroke-width="6" stroke="black" mask="url(#stroke0_3119_45)"/>
+</svg>

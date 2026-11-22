@@ -11,6 +11,8 @@ const ctx = await esbuild.context({
     sourcemap: isProd ? false : true,
     outdir: 'dist',
     entryNames: '[name]',
+    // served from src/public by express; don't inline/copy into dist
+    external: ['/assets/*.svg'],
     plugins: [ sassPlugin() ],
 });
 

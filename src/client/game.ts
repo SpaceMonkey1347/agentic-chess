@@ -185,6 +185,7 @@ export function createGame(): Game {
  */
 export interface MoveSource {
     pickMove(game: Chess): Promise<string | null>
+    takeTurn(game: Chess): Promise<string | null>
 }
 
 /** Placeholder player: plays a random legal move. */
@@ -196,4 +197,7 @@ export const randomBot: MoveSource = {
         }
         return moves[Math.floor(Math.random() * moves.length)] ?? null
     },
+    async takeTurn(game: Chess): Promise<string | null> {
+        return this.pickMove(game)
+    }
 }
