@@ -140,7 +140,13 @@
                         </label>
                         <label for="move-template">
                             <span>Move Template</span>
-                            <button class="icon-btn icon-btn--info">?</button>
+                            <button
+                                type="button"
+                                class="icon-btn icon-btn--info"
+                                data-help="move"
+                            >
+                                ?
+                            </button>
                             <button
                                 id="reset-move-template"
                                 class="icon-btn icon-btn--reset"
@@ -155,7 +161,13 @@
                         ></textarea>
                         <label for="draw-template">
                             <span>Draw Template</span>
-                            <button class="icon-btn icon-btn--info">?</button>
+                            <button
+                                type="button"
+                                class="icon-btn icon-btn--info"
+                                data-help="draw"
+                            >
+                                ?
+                            </button>
                             <button
                                 id="reset-draw-template"
                                 class="icon-btn icon-btn--reset"
@@ -209,6 +221,12 @@
                     <section class="tab-panel" id="panel-move-history">
                         <ol class="move-history"></ol>
                         <p class="game-status" id="game-status" hidden></p>
+                        <div class="turn-retry" id="turn-retry" hidden>
+                            <span>Ask the AI again.</span>
+                            <button type="button" id="retry-ai-turn">
+                                Retry
+                            </button>
+                        </div>
                         <div class="move-nav">
                             <button
                                 type="button"
@@ -239,6 +257,23 @@
                                 &gt;&gt;
                             </button>
                         </div>
+                        <div class="draw-offer" id="draw-offer" hidden>
+                            <p class="draw-offer-text">
+                                Your opponent offers a draw.
+                            </p>
+                            <div class="draw-offer-actions">
+                                <button
+                                    type="button"
+                                    class="primary"
+                                    id="accept-draw"
+                                >
+                                    Accept
+                                </button>
+                                <button type="button" id="decline-draw">
+                                    Decline
+                                </button>
+                            </div>
+                        </div>
                         <div class="game-actions">
                             <button type="button" class="primary" id="new-game">
                                 New Game
@@ -250,5 +285,23 @@
                 </div>
             </aside>
         </main>
+        <!-- filled in by main.ts when a template's ? button is clicked -->
+        <dialog
+            class="help-overlay"
+            id="template-help"
+            aria-labelledby="template-help-title"
+        >
+            <div class="help-overlay-head">
+                <h2 id="template-help-title"></h2>
+                <button
+                    type="button"
+                    class="help-overlay-close"
+                    aria-label="Close help"
+                >
+                    &times;
+                </button>
+            </div>
+            <div class="help-overlay-body"></div>
+        </dialog>
     </body>
 </html>

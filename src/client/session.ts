@@ -2,8 +2,14 @@ import type { Key } from '@lichess-org/chessground/types'
 
 import { askPromotion, createBoardView } from './board.ts'
 import type { PositionView } from './board.ts'
-import { createGame } from './game.ts'
-import type { MoveSource, PromotionPiece, Side } from './game.ts'
+import { createGame, opposite } from './game.ts'
+import type {
+    DrawDecision,
+    MoveSource,
+    PromotionPiece,
+    Side,
+    TurnDecision,
+} from './game.ts'
 import { createMoveHistory } from './history.ts'
 
 /** how long the bot "thinks" before replying, so its move animates */
@@ -16,7 +22,14 @@ export interface Session {
     resign(): void
     /** the player offers a draw */
     offerDraw(): void
+    /** the player answers the AI's draw offer */
+    answerDrawOffer(accept: boolean): void
+    /** ask the AI for its turn again after a failed reply */
+    retryTurn(): void
 }
+
+const errorMessage = (error: unknown): string =>
+    error instanceof Error ? error.message : String(error)
 
 /**
  * Runs a game against `bot` on the board in `element`: the player moves with
@@ -36,6 +49,7 @@ export function createSession(element: HTMLElement, bot: MoveSource): Session {
     let reviewing: number | null = null
 
     const playerSide = (): 'w' | 'b' => (playingAs === 'white' ? 'w' : 'b')
+    const aiSide = (): Side => opposite(playingAs)
     const isPlayerTurn = () => game.turn() === playerSide() && !game.isOver()
 
     /** the live position, as the board needs to see it */
@@ -83,16 +97,53 @@ export function createSession(element: HTMLElement, bot: MoveSource): Session {
         reviewing = null
     }
 
-    /** show the result under the move list */
+    /** a one-off message under the move list, e.g. a declined draw or an error */
+    let statusNote: string | undefined
+
+    /** show the result, or the note while the game is still running */
     const renderResult = () => {
         const el = document.getElementById('game-status')
         if (!el) {
             return
         }
-        const text = game.result()
+        const text = game.result() ?? statusNote
         el.textContent = text ?? ''
         el.hidden = !text
     }
+
+    const setStatusNote = (note: string | undefined) => {
+        statusNote = note
+        renderResult()
+    }
+
+    /** the AI's draw offer stays on screen until the player answers it */
+    let drawOfferOpen = false
+
+    const showDrawOffer = () => {
+        drawOfferOpen = true
+        const el = document.getElementById('draw-offer')
+        if (el) {
+            el.hidden = false
+        }
+    }
+
+    const hideDrawOffer = () => {
+        drawOfferOpen = false
+        const el = document.getElementById('draw-offer')
+        if (el) {
+            el.hidden = true
+        }
+    }
+
+    /** the AI's turn failed, so offer a way to ask it again */
+    const setRetryVisible = (visible: boolean) => {
+        const el = document.getElementById('turn-retry')
+        if (el) {
+            el.hidden = !visible
+        }
+    }
+
+    const aiToMove = () => game.turn() !== playerSide() && !game.isOver()
 
     const render = () => {
         const moves = game.moves()
@@ -106,28 +157,58 @@ export function createSession(element: HTMLElement, bot: MoveSource): Session {
         botMoveToken++
     }
 
-    const playBotMove = async () => {
+    const playBotMove = async (token: number) => {
         if (game.isOver()) {
             return
         }
-        const san = await bot.pickMove(game.chess())
-        // an empty or illegal reply leaves the board alone
-        if (!san || !game.playSan(san)) {
+        let decision: TurnDecision
+        try {
+            decision = bot.turn
+                ? await bot.turn(game.chess())
+                : { move: await bot.pickMove(game.chess()) }
+        } catch (error) {
+            if (token === botMoveToken) {
+                setStatusNote(`AI error: ${errorMessage(error)}`)
+                setRetryVisible(true)
+            }
             return
         }
+        // a new game or a draw offer took over while the AI was thinking
+        if (token !== botMoveToken || game.isOver()) {
+            return
+        }
+        if (decision.resign) {
+            game.conclude(
+                `${aiSide() === 'white' ? 'White' : 'Black'} resigned`
+            )
+            finish()
+            return
+        }
+        // an empty or illegal reply leaves the board alone; the player can
+        // ask the AI for another turn instead of being stuck
+        if (!decision.move || !game.playSan(decision.move)) {
+            setStatusNote('AI did not make a valid move.')
+            setRetryVisible(true)
+            return
+        }
+        setRetryVisible(false)
+        setStatusNote(undefined)
         goLive()
         render()
-        // a premove queued during the bot's turn plays now: chessground fires
-        // its move event, so the board, the game and the next reply all follow.
-        // it also clears any premove that the reply made illegal.
+        // a premove queued during the bot's turn plays now: chessground
+        // fires its move event, so the board, the game and the next reply
+        // all follow. it also clears any premove that the reply made illegal.
         view.playPremove()
+        if (decision.offerDraw && !game.isOver()) {
+            showDrawOffer()
+        }
     }
 
     const scheduleBotMove = () => {
         const token = ++botMoveToken
         window.setTimeout(() => {
             if (token === botMoveToken) {
-                void playBotMove()
+                void playBotMove(token)
             }
         }, BOT_MOVE_DELAY_MS)
     }
@@ -142,6 +223,9 @@ export function createSession(element: HTMLElement, bot: MoveSource): Session {
             render()
             return
         }
+        // moving past an offer counts as declining it
+        hideDrawOffer()
+        setStatusNote(undefined)
         goLive()
         render()
         if (!game.isOver()) {
@@ -172,6 +256,8 @@ export function createSession(element: HTMLElement, bot: MoveSource): Session {
     const finish = () => {
         inProgress = false
         cancelBotMove()
+        hideDrawOffer()
+        setRetryVisible(false)
         // drop any premove or selection along with the pending reply
         view.cancelMove()
         goLive()
@@ -186,17 +272,78 @@ export function createSession(element: HTMLElement, bot: MoveSource): Session {
         finish()
     }
 
-    const offerDraw = () => {
-        if (!inProgress || game.isOver()) {
+    /**
+     * The player offers a draw. The AI answers with a decision and, when it
+     * declines, the move it wants to play — so the offer replaces the reply
+     * that was already scheduled.
+     */
+    const offerDraw = async () => {
+        if (!inProgress || game.isOver() || drawOfferOpen) {
             return
         }
-        // the move source has no opinion on draws yet, so an offer is accepted
+        const token = ++botMoveToken
+        setStatusNote(undefined)
+        let answer: DrawDecision | null = null
+        try {
+            answer = bot.respondToDraw
+                ? await bot.respondToDraw(game.chess(), aiSide())
+                : null
+        } catch (error) {
+            if (token === botMoveToken) {
+                setStatusNote(`AI error: ${errorMessage(error)}`)
+                // the offer replaced the scheduled reply, so the AI is stuck
+                setRetryVisible(aiToMove())
+            }
+            return
+        }
+        if (token !== botMoveToken || game.isOver()) {
+            return
+        }
+        // a source with no opinion agrees, as it always did
+        if (!answer || answer.accept) {
+            game.conclude('Draw agreed')
+            finish()
+            return
+        }
+        setStatusNote('Draw declined')
+        if (
+            answer.move &&
+            game.turn() !== playerSide() &&
+            game.playSan(answer.move)
+        ) {
+            goLive()
+            render()
+            view.playPremove()
+        }
+    }
+
+    /** ask the AI for its turn again after a failed reply */
+    const retryTurn = () => {
+        if (!inProgress || !aiToMove()) {
+            return
+        }
+        setRetryVisible(false)
+        setStatusNote(undefined)
+        scheduleBotMove()
+    }
+
+    const answerDrawOffer = (accept: boolean) => {
+        if (!drawOfferOpen) {
+            return
+        }
+        hideDrawOffer()
+        if (!accept || !inProgress || game.isOver()) {
+            return
+        }
         game.conclude('Draw agreed')
         finish()
     }
 
     const startGame = (side: Side) => {
         cancelBotMove()
+        hideDrawOffer()
+        setRetryVisible(false)
+        setStatusNote(undefined)
         // drop any premove or selection left over from the previous game
         view.cancelMove()
         inProgress = true
@@ -209,5 +356,5 @@ export function createSession(element: HTMLElement, bot: MoveSource): Session {
         }
     }
 
-    return { startGame, resign, offerDraw }
+    return { startGame, resign, offerDraw, answerDrawOffer, retryTurn }
 }

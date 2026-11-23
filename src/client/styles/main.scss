@@ -661,6 +661,68 @@ body {
         border-top: 1px solid var(--line);
     }
 
+    /* the AI's turn failed: offer a way to ask it again */
+    .turn-retry {
+        flex: none;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 8px 16px;
+        border-top: 1px solid var(--line);
+        border-left: 3px solid var(--err);
+
+        &[hidden] {
+            display: none;
+        }
+
+        span {
+            font-size: 0.75rem;
+            color: var(--muted);
+        }
+
+        button {
+            flex: none;
+            margin: 0;
+            padding: 6px 12px;
+            font-size: 0.8rem;
+        }
+    }
+
+    /* the AI's draw offer, answered from the move history tab */
+    .draw-offer {
+        flex: none;
+        display: grid;
+        gap: 8px;
+        padding: 10px 16px;
+        border-top: 1px solid var(--line);
+        border-left: 3px solid var(--accent);
+        background-color: var(--panel-bg);
+
+        &[hidden] {
+            display: none;
+        }
+
+        .draw-offer-text {
+            margin: 0;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .draw-offer-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+
+        button {
+            margin: 0;
+            padding: 8px 0;
+            font-size: 0.85rem;
+        }
+    }
+
     .game-actions {
         flex: none;
         display: grid;
@@ -728,6 +790,76 @@ body {
             background-size: cover;
             z-index: auto;
             pointer-events: none;
+        }
+    }
+}
+
+/* help overlay: opened by the template ? buttons, filled in by main.ts */
+.help-overlay {
+    width: min(340px, calc(100vw - 2 * var(--gap)));
+    padding: 16px;
+    color: var(--text);
+    background-color: var(--panel-bg);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    box-shadow: 0 14px 34px #00000080;
+
+    &::backdrop {
+        background-color: #00000080;
+    }
+
+    .help-overlay-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+
+        h2 {
+            margin: 0;
+            font-size: 0.95rem;
+        }
+    }
+
+    .help-overlay-close {
+        flex: none;
+        width: 1.6rem;
+        height: 1.6rem;
+        padding: 0;
+        font: inherit;
+        font-size: 1.1rem;
+        line-height: 1;
+        color: var(--muted);
+        background: none;
+        border: 0;
+        border-radius: 6px;
+        cursor: pointer;
+        transition:
+            color 0.12s,
+            background-color 0.12s;
+
+        &:hover {
+            color: var(--text);
+            background-color: var(--bg);
+        }
+    }
+
+    .help-overlay-body {
+        margin-top: 8px;
+        font-size: 0.8rem;
+        line-height: 1.5;
+        color: var(--muted);
+
+        p {
+            margin: 0 0 8px;
+        }
+
+        p:last-child {
+            margin-bottom: 0;
+        }
+
+        code {
+            color: var(--text);
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
         }
     }
 }

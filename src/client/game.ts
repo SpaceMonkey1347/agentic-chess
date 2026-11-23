@@ -5,6 +5,10 @@ import type { Key } from '@lichess-org/chessground/types'
 /** the side a player sits on */
 export type Side = 'white' | 'black'
 
+/** the other side */
+export const opposite = (side: Side): Side =>
+    side === 'white' ? 'black' : 'white'
+
 /** the promotion choices, using the role letters chess.js reports */
 export type PromotionPiece = 'q' | 'r' | 'b' | 'n'
 
@@ -179,6 +183,21 @@ export function createGame(): Game {
     }
 }
 
+/** a turn's move, plus the actions the AI may want to take with it */
+export interface TurnDecision {
+    move: string | null
+    /** the AI offers the player a draw */
+    offerDraw?: boolean
+    /** the AI resigns instead of moving */
+    resign?: boolean
+}
+
+/** the answer to a draw offer, with the move the AI plays if it declines */
+export interface DrawDecision {
+    move: string | null
+    accept: boolean
+}
+
 /**
  * Supplies a move for the AI side, as SAN. The endpoint-backed player will
  * implement this same interface, so the game loop won't have to change.
@@ -186,6 +205,10 @@ export function createGame(): Game {
 export interface MoveSource {
     pickMove(game: Chess): Promise<string | null>
     takeTurn(game: Chess): Promise<string | null>
+    /** the move and the actions that go with it; falls back to pickMove */
+    turn?(game: Chess): Promise<TurnDecision>
+    /** the answer to a draw offer; absent when the source has no opinion */
+    respondToDraw?(game: Chess, aiSide: Side): Promise<DrawDecision | null>
 }
 
 /** Placeholder player: plays a random legal move. */

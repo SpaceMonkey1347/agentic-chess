@@ -61,25 +61,98 @@ export function substituteKeywords(
     })
 }
 
-export const defultMovePrompt = `Let's play chess! \
-I play as [playerColor] and you play as [aiColor]. \
-Use standard algebraic notation for all moves. Strictly follow all FIDE chess rules. \
-Output ONLY your move, no move numbers, no '...' no board, no explanations. \
-Your move must be in legal moves.
+/**
+ * The reply format every template asks for, one `KEY: value` per line. It is
+ * parsed in endpoint.ts: keys are matched on their own line (or between pipes)
+ * so prose around them cannot be mistaken for a move or an answer.
+ */
+const replyFormat = {
+    move: 'MOVE: <your move in standard algebraic notation>',
+    draw: 'DRAW: <accept or decline>',
+    offerDraw: 'OFFER DRAW: <yes or no>',
+    resign: 'RESIGN: <yes or no>',
+}
 
-FEN: [FEN]
+/** the actions the AI is allowed to take, beyond moving */
+export interface MovePromptOptions {
+    /** the AI may offer a draw to the player */
+    offerDraw?: boolean
+    /** the AI may resign */
+    resign?: boolean
+}
 
-legal moves: [[legalMoves]]
+/** the lines a reply must contain, in order, for the given options */
+const replyLines = (options: MovePromptOptions): string =>
+    [
+        replyFormat.move,
+        ...(options.offerDraw ? [replyFormat.offerDraw] : []),
+        ...(options.resign ? [replyFormat.resign] : []),
+    ].join('\n')
 
-Your move.`
+const actionNotes = (options: MovePromptOptions): string[] => {
+    const notes: string[] = []
+    if (options.offerDraw) {
+        notes.push(
+            'You may offer a draw: answer OFFER DRAW: yes when you want one, ' +
+                'otherwise answer OFFER DRAW: no. A draw offer only ends the ' +
+                'game if your opponent accepts it.'
+        )
+    }
+    if (options.resign) {
+        notes.push(
+            'You may resign: answer RESIGN: yes only when the position is ' +
+                'clearly lost, otherwise answer RESIGN: no. Resigning ends ' +
+                'the game immediately and your move is ignored.'
+        )
+    }
+    return notes
+}
 
-export const defaultDrawOfferPrompt = `You are currently playing chess, \
-You are playing as [aiColor] and your opponent is playing as [playerColor]. \
-Your opponent is offering a draw. Output ONLY either yes or no. \
-Do NOT output ANYTHING other than yes or no.
+/**
+ * A move template. The two flags add the optional actions, so the sidebar
+ * toggles can compose the four variants (plain, draw, resign, both).
+ */
+export function buildMovePrompt(options: MovePromptOptions = {}): string {
+    const notes = actionNotes(options)
+    return [
+        "Let's play chess!",
+        'I play as [playerColor] and you play as [aiColor].',
+        'Use standard algebraic notation for all moves. Strictly follow all FIDE chess rules.',
+        'Your move must be one of the legal moves.',
+        ...(notes.length ? ['', ...notes] : []),
+        '',
+        'Reply with ONLY these lines and nothing else:',
+        replyLines(options),
+        '',
+        'FEN: [FEN]',
+        '',
+        'legal moves: [legalMoves]',
+        '',
+        'Your move.',
+    ].join('\n')
+}
 
-FEN: [FEN]
+/** the move template with no extra actions */
+export const defaultMovePrompt = buildMovePrompt()
 
-legal moves: [[legalMoves]]
-
-Do you accept the draw offer? (yes or no)`
+/**
+ * The reply to a draw offer: the AI moves *and* answers the offer in the same
+ * reply, so the game never has to wait for a second request.
+ */
+export const defaultDrawOfferPrompt = [
+    'You are playing chess as [aiColor] against [playerColor],',
+    'and [playerColor] has just offered a draw.',
+    'Make your move and answer the offer in the same reply.',
+    'Use standard algebraic notation for your move. Strictly follow all FIDE chess rules.',
+    'Your move must be one of the legal moves.',
+    '',
+    'Reply with ONLY these two lines and nothing else:',
+    replyFormat.move,
+    replyFormat.draw,
+    '',
+    'FEN: [FEN]',
+    '',
+    'legal moves: [legalMoves]',
+    '',
+    'Your move and your answer to the draw offer.',
+].join('\n')
