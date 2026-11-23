@@ -3,8 +3,9 @@ import htmx from 'htmx.org'
 import type { Side } from './game.ts'
 import { buildMovePrompt, defaultDrawOfferPrompt } from './prompt.ts'
 import { createSession } from './session.ts'
-import { createEndpointBot } from './endpoint.ts'
-import type { EndpointConfig } from './endpoint.ts'
+import type { GameState } from './session.ts'
+import { checkConnection, createEndpointBot } from './endpoint.ts'
+import type { CheckResult, ConfigField, EndpointConfig } from './endpoint.ts'
 
 declare global {
     interface Window {
@@ -162,27 +163,187 @@ const readConfig = (): EndpointConfig => {
     return { endpoint, apiKey, model, prompt, drawPrompt }
 }
 
+/** the inputs the connection check can point at, keyed by the field it names */
+const configFields = {
+    endpoint: apiEndpointEl,
+    apiKey: apiKeyEl,
+    model: modelNameEl,
+} as const
+
+const fieldLabels: Record<ConfigField, string> = {
+    endpoint: 'API Endpoint',
+    apiKey: 'API Key',
+    model: 'Model Name',
+}
+
+const connectionResultEl = document.getElementById('connection-result')
+const startButton = document.getElementById(
+    'start-game'
+) as HTMLButtonElement | null
+const newGameButton = document.getElementById(
+    'new-game'
+) as HTMLButtonElement | null
+const resignButton = document.getElementById(
+    'resign'
+) as HTMLButtonElement | null
+const drawButton = document.getElementById('draw') as HTMLButtonElement | null
+const regenerateButton = document.getElementById(
+    'regenerate-move'
+) as HTMLButtonElement | null
+const cancelButton = document.getElementById(
+    'cancel-ai-move'
+) as HTMLButtonElement | null
+
+const clearFieldErrors = () => {
+    for (const el of Object.values(configFields)) {
+        el?.classList.remove('field-invalid')
+    }
+}
+
+/** clear the highlight everywhere, then mark the field the check blamed */
+const markFieldInvalid = (field?: ConfigField) => {
+    clearFieldErrors()
+    if (field) {
+        configFields[field]?.classList.add('field-invalid')
+    }
+}
+
+/** replace the connection result box; an empty box hides itself via CSS */
+const showConnectionResult = (
+    kind: 'ok' | 'error',
+    title: string,
+    detail?: string,
+    raw?: string
+) => {
+    if (!connectionResultEl) {
+        return
+    }
+    connectionResultEl.className = `connection-result connection-result--${kind}`
+    const dot = document.createElement('span')
+    dot.className = 'connection-dot'
+    const text = document.createElement('div')
+    text.className = 'connection-text'
+    const heading = document.createElement('strong')
+    heading.textContent = title
+    text.append(heading)
+    if (detail) {
+        const line = document.createElement('span')
+        line.className = 'connection-detail'
+        line.textContent = detail
+        text.append(line)
+    }
+    if (raw) {
+        const line = document.createElement('div')
+        line.className = 'connection-error'
+        line.textContent = raw
+        text.append(line)
+    }
+    connectionResultEl.replaceChildren(dot, text)
+}
+
+const clearConnectionResult = () => {
+    if (connectionResultEl) {
+        connectionResultEl.className = 'connection-result'
+        connectionResultEl.replaceChildren()
+    }
+}
+
+/** the last state the session reported, so a failed check can restore it */
+let gameState: GameState = {
+    inProgress: false,
+    over: false,
+    thinking: false,
+    canRegenerate: false,
+}
+
+/** show only the controls the current game state allows */
+const renderGameState = (state: GameState) => {
+    gameState = state
+    const running = state.inProgress && !state.over
+    if (startButton) {
+        startButton.disabled = running
+        startButton.textContent = running ? 'Game in progress' : 'Start Game'
+    }
+    // resign and draw only make sense while a game is live
+    if (resignButton) {
+        resignButton.disabled = !running
+    }
+    if (drawButton) {
+        drawButton.disabled = !running
+    }
+    // a new game only makes sense once the last one is over
+    if (newGameButton) {
+        newGameButton.disabled = !state.over
+    }
+    // regenerate is offered while the AI is to move or has just moved
+    if (regenerateButton) {
+        regenerateButton.disabled = !state.canRegenerate
+    }
+    // cancel only while a request is actually in flight
+    if (cancelButton) {
+        cancelButton.hidden = !state.thinking
+    }
+}
+
 const boardEl = document.getElementById('chessboard')
 
 if (boardEl) {
-    const session = createSession(boardEl, createEndpointBot(readConfig))
+    const session = createSession(boardEl, createEndpointBot(readConfig), {
+        onStateChange: renderGameState,
+    })
 
-    // same action as Start Game, just reachable from the move history tab
-    const newGame = () => session.startGame(chosenSide())
+    /**
+     * Start Game and New Game both go through the connection check, so a bad
+     * endpoint, key or model is pointed at now instead of failing on the move.
+     */
+    const startValidatedGame = async () => {
+        clearFieldErrors()
+        clearConnectionResult()
+        if (startButton) {
+            startButton.disabled = true
+            startButton.textContent = 'Checking…'
+        }
+        let result: CheckResult
+        try {
+            result = await checkConnection(readConfig())
+        } catch (error) {
+            result = {
+                ok: false,
+                error: error instanceof Error ? error.message : String(error),
+            }
+        }
+        if (!result.ok) {
+            markFieldInvalid(result.field)
+            showConnectionResult(
+                'error',
+                result.field
+                    ? `${fieldLabels[result.field]} looks wrong`
+                    : 'Connection failed',
+                result.field
+                    ? 'Fix this field and try again.'
+                    : 'Check the settings and try again.',
+                result.error
+            )
+            // no game started, so hand the controls back as they were
+            renderGameState(gameState)
+            return
+        }
+        showConnectionResult('ok', 'Connected', 'The endpoint answered.')
+        session.startGame(chosenSide())
+    }
 
-    document.getElementById('start-game')?.addEventListener('click', newGame)
-    document.getElementById('new-game')?.addEventListener('click', newGame)
-    document.getElementById('resign')?.addEventListener('click', session.resign)
-    document
-        .getElementById('draw')
-        ?.addEventListener('click', session.offerDraw)
+    const start = () => void startValidatedGame()
+
+    startButton?.addEventListener('click', start)
+    newGameButton?.addEventListener('click', start)
+    resignButton?.addEventListener('click', session.resign)
+    drawButton?.addEventListener('click', session.offerDraw)
     document
         .getElementById('accept-draw')
         ?.addEventListener('click', () => session.answerDrawOffer(true))
     document
         .getElementById('decline-draw')
         ?.addEventListener('click', () => session.answerDrawOffer(false))
-    document
-        .getElementById('retry-ai-turn')
-        ?.addEventListener('click', session.retryTurn)
+    regenerateButton?.addEventListener('click', session.regenerate)
+    cancelButton?.addEventListener('click', session.cancelTurn)
 }

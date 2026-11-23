@@ -1,7 +1,7 @@
 import express from 'express'
 import path from 'node:path'
 
-import { requestMove } from './ai.js'
+import { checkConnection, requestMove } from './ai.js'
 
 const app = express()
 const __dirname = import.meta.dirname
@@ -25,6 +25,11 @@ app.post('/api/move', async (req, res) => {
     } catch (err) {
         res.status(502).json({ error: err?.message ?? String(err) })
     }
+})
+
+app.post('/api/check', async (req, res) => {
+    const { endpoint, apiKey, model } = req.body ?? {}
+    res.json(await checkConnection({ endpoint, apiKey, model }))
 })
 
 export default app

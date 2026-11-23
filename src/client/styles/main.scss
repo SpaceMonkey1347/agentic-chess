@@ -262,12 +262,31 @@ body {
         cursor: pointer;
     }
 
+    /* the hidden radios driving the side picker sit inside the panel, where
+       the width:100% above wins on specificity and stretches them (invisible,
+       but wide enough to give the page a horizontal scrollbar) */
+    input.radio-input {
+        width: 1px;
+        height: 1px;
+    }
+
     textarea {
         height: 5lh;
         max-height: 14lh;
         &:focus {
             height: auto;
             field-sizing: content;
+        }
+    }
+
+    /* a config field the connection check blamed */
+    input.field-invalid,
+    textarea.field-invalid {
+        border-color: var(--err);
+
+        &:focus {
+            border-color: var(--err);
+            box-shadow: 0 0 0 3px #c9736e26;
         }
     }
 
@@ -299,6 +318,13 @@ body {
         &:focus-visible {
             outline: 2px solid var(--accent);
             outline-offset: 1px;
+        }
+
+        /* disabled: dimmed and inert (no hover), for the state-gated controls */
+        &:disabled {
+            opacity: 0.5;
+            cursor: default;
+            pointer-events: none;
         }
     }
 
@@ -471,7 +497,7 @@ body {
         }
     }
 
-    /* connection result — dummy values, swap once the endpoint is probed */
+    /* connection result — filled in by main.ts after a Start Game check */
     .connection-result {
         display: flex;
         align-items: flex-start;
@@ -481,6 +507,11 @@ body {
         background-color: var(--bg);
         border: 1px solid var(--line);
         border-radius: 4px;
+
+        /* nothing to report: hide the empty box */
+        &:empty {
+            display: none;
+        }
 
         .connection-dot {
             flex: none;
@@ -661,31 +692,27 @@ body {
         border-top: 1px solid var(--line);
     }
 
-    /* the AI's turn failed: offer a way to ask it again */
-    .turn-retry {
+    /* the AI's move: regenerate any time, cancel while it is in flight */
+    .ai-turn {
         flex: none;
         display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-        padding: 8px 16px;
+        gap: 6px;
+        padding: 8px;
         border-top: 1px solid var(--line);
-        border-left: 3px solid var(--err);
 
         &[hidden] {
             display: none;
         }
 
-        span {
-            font-size: 0.75rem;
-            color: var(--muted);
+        button {
+            flex: 1 1 0;
+            margin: 0;
+            padding: 8px 0;
+            font-size: 0.85rem;
         }
 
-        button {
-            flex: none;
-            margin: 0;
-            padding: 6px 12px;
-            font-size: 0.8rem;
+        button[hidden] {
+            display: none;
         }
     }
 

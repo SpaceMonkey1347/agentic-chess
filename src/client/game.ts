@@ -44,6 +44,8 @@ export interface Game {
     play(from: Key, to: Key, promotion?: PromotionPiece): boolean
     /** play a move given in standard algebraic notation; false when illegal */
     playSan(san: string): boolean
+    /** take back the last move; false when there is nothing to take back */
+    undo(): boolean
     /** the promotion choices for this move, empty when it is not a promotion */
     promotionPieces(from: Key, to: Key): PromotionPiece[]
     /** the legal destinations, in the shape chessground wants them */
@@ -133,6 +135,8 @@ export function createGame(): Game {
         }
     }
 
+    const undo = (): boolean => game.undo() !== null
+
     const positionAt = (ply: number): PositionSnapshot => {
         const history = game.history({ verbose: true })
         const move = history[Math.max(0, Math.min(ply, history.length)) - 1]
@@ -167,6 +171,7 @@ export function createGame(): Game {
         positionAt,
         play,
         playSan,
+        undo,
         promotionPieces,
         legalDests,
         lastMove,
@@ -203,12 +208,16 @@ export interface DrawDecision {
  * implement this same interface, so the game loop won't have to change.
  */
 export interface MoveSource {
-    pickMove(game: Chess): Promise<string | null>
-    takeTurn(game: Chess): Promise<string | null>
+    pickMove(game: Chess, signal?: AbortSignal): Promise<string | null>
+    takeTurn(game: Chess, signal?: AbortSignal): Promise<string | null>
     /** the move and the actions that go with it; falls back to pickMove */
-    turn?(game: Chess): Promise<TurnDecision>
+    turn?(game: Chess, signal?: AbortSignal): Promise<TurnDecision>
     /** the answer to a draw offer; absent when the source has no opinion */
-    respondToDraw?(game: Chess, aiSide: Side): Promise<DrawDecision | null>
+    respondToDraw?(
+        game: Chess,
+        aiSide: Side,
+        signal?: AbortSignal
+    ): Promise<DrawDecision | null>
 }
 
 /** Placeholder player: plays a random legal move. */

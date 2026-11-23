@@ -14,6 +14,37 @@ export type EndpointConfig = {
     drawPrompt: string
 }
 
+/** which config field the connection check blamed */
+export type ConfigField = 'endpoint' | 'apiKey' | 'model'
+
+export interface CheckResult {
+    ok: boolean
+    /** the field at fault, when the check failed on a specific one */
+    field?: ConfigField
+    /** the upstream message, for the raw error line */
+    error?: string
+}
+
+/**
+ * Ask the server to probe the endpoint with the given settings. The server
+ * does the request (it holds the key and dodges CORS), so the sidebar only
+ * has to point at whichever field the answer blames.
+ */
+export async function checkConnection(
+    config: Pick<EndpointConfig, 'endpoint' | 'apiKey' | 'model'>
+): Promise<CheckResult> {
+    const res = await fetch('/api/check', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(config),
+    })
+    const body = await res.json().catch(() => ({}))
+    if (!res.ok) {
+        return { ok: false, error: body.error ?? `HTTP ${res.status}` }
+    }
+    return body as CheckResult
+}
+
 const sanRegex =
     /\b(?:O-O(?:-O)?|[KQRBN]?[a-h]?[1-8]?x?[a-h][1-8](?:=[QRBN])?[+#]?)(?![a-zA-Z0-9])/g
 /** what a template reply can say, beyond the move itself */
@@ -109,7 +140,8 @@ export function createEndpointBot(getConfig: () => EndpointConfig): MoveSource {
     const ask = async (
         game: Chess,
         template: string,
-        playerSide: Side
+        playerSide: Side,
+        signal?: AbortSignal
     ): Promise<string> => {
         const cfg = getConfig()
         const prompt = substituteKeywords(game, template, playerSide)
@@ -117,6 +149,7 @@ export function createEndpointBot(getConfig: () => EndpointConfig): MoveSource {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify({ ...cfg, prompt }),
+            signal,
         })
         const body = await res.json().catch(() => ({}))
         if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`)
@@ -141,24 +174,32 @@ export function createEndpointBot(getConfig: () => EndpointConfig): MoveSource {
     }
 
     const endpointBot: MoveSource = {
-        async pickMove(game: Chess): Promise<string | null> {
+        async pickMove(
+            game: Chess,
+            signal?: AbortSignal
+        ): Promise<string | null> {
             const text = await ask(
                 game,
                 getConfig().prompt,
-                opposite(sideToMove(game))
+                opposite(sideToMove(game)),
+                signal
             )
             const move = parseReply(text).move
             requireLegal(game, move, text)
             return move
         },
-        async takeTurn(game: Chess): Promise<string | null> {
-            return this.pickMove(game)
+        async takeTurn(
+            game: Chess,
+            signal?: AbortSignal
+        ): Promise<string | null> {
+            return this.pickMove(game, signal)
         },
-        async turn(game: Chess): Promise<TurnDecision> {
+        async turn(game: Chess, signal?: AbortSignal): Promise<TurnDecision> {
             const text = await ask(
                 game,
                 getConfig().prompt,
-                opposite(sideToMove(game))
+                opposite(sideToMove(game)),
+                signal
             )
             const reply = parseReply(text)
             // a resignation needs no move, so a bad one cannot block it
@@ -173,12 +214,14 @@ export function createEndpointBot(getConfig: () => EndpointConfig): MoveSource {
         },
         async respondToDraw(
             game: Chess,
-            aiSide: Side
+            aiSide: Side,
+            signal?: AbortSignal
         ): Promise<DrawDecision | null> {
             const text = await ask(
                 game,
                 getConfig().drawPrompt,
-                opposite(aiSide)
+                opposite(aiSide),
+                signal
             )
             const reply = parseReply(text)
             return {

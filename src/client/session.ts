@@ -24,8 +24,27 @@ export interface Session {
     offerDraw(): void
     /** the player answers the AI's draw offer */
     answerDrawOffer(accept: boolean): void
-    /** ask the AI for its turn again after a failed reply */
-    retryTurn(): void
+    /** ask the AI for its move again, taking back its last one if it moved */
+    regenerate(): void
+    /** drop the in-flight AI move, leaving it the AI's turn */
+    cancelTurn(): void
+}
+
+/** what the sidebar needs to know to show the right controls */
+export interface GameState {
+    /** a game is running: started and not yet concluded */
+    inProgress: boolean
+    /** the current game has ended */
+    over: boolean
+    /** an AI move is scheduled or in flight */
+    thinking: boolean
+    /** the AI's move can be asked for again: its turn, or it just moved */
+    canRegenerate: boolean
+}
+
+export interface SessionOptions {
+    /** called on every change to the running / finished state */
+    onStateChange?(state: GameState): void
 }
 
 const errorMessage = (error: unknown): string =>
@@ -35,13 +54,21 @@ const errorMessage = (error: unknown): string =>
  * Runs a game against `bot` on the board in `element`: the player moves with
  * the mouse, the bot answers, and promotions go through the promotion dialog.
  */
-export function createSession(element: HTMLElement, bot: MoveSource): Session {
+export function createSession(
+    element: HTMLElement,
+    bot: MoveSource,
+    options: SessionOptions = {}
+): Session {
+    const { onStateChange } = options
     const game = createGame()
     const view = createBoardView(element, {
         onMove: (orig: Key, dest: Key) => onPlayerMove(orig, dest),
     })
 
     let inProgress = false
+    let thinking = false
+    /** the request behind the current AI turn, so it can be cancelled */
+    let botAbort: AbortController | null = null
     let botMoveToken = 0
     /** the side the player picked, until a new game changes it */
     let playingAs: Side = 'white'
@@ -135,21 +162,39 @@ export function createSession(element: HTMLElement, bot: MoveSource): Session {
         }
     }
 
-    /** the AI's turn failed, so offer a way to ask it again */
-    const setRetryVisible = (visible: boolean) => {
-        const el = document.getElementById('turn-retry')
-        if (el) {
-            el.hidden = !visible
-        }
-    }
-
     const aiToMove = () => game.turn() !== playerSide() && !game.isOver()
+
+    /** the player is to move, so the AI is the side that just moved */
+    const aiJustMoved = () =>
+        game.turn() === playerSide() && game.moves().length > 0
+
+    const canRegenerate = () =>
+        inProgress && !game.isOver() && (aiToMove() || aiJustMoved())
+
+    /** tell the sidebar what it may show */
+    const notifyState = () =>
+        onStateChange?.({
+            inProgress,
+            over: game.isOver(),
+            thinking,
+            canRegenerate: canRegenerate(),
+        })
+
+    /** a request is running; the sidebar shows Cancel only while it is */
+    const setThinking = (value: boolean) => {
+        if (thinking === value) {
+            return
+        }
+        thinking = value
+        notifyState()
+    }
 
     const render = () => {
         const moves = game.moves()
         view.render(reviewing === null ? liveView() : pastView(reviewing))
         renderResult()
         history.render(moves, reviewing ?? moves.length)
+        notifyState()
     }
 
     /** drop any queued bot reply, e.g. when a new game starts */
@@ -158,54 +203,74 @@ export function createSession(element: HTMLElement, bot: MoveSource): Session {
     }
 
     const playBotMove = async (token: number) => {
-        if (game.isOver()) {
-            return
-        }
-        let decision: TurnDecision
+        const controller = new AbortController()
+        botAbort = controller
         try {
-            decision = bot.turn
-                ? await bot.turn(game.chess())
-                : { move: await bot.pickMove(game.chess()) }
-        } catch (error) {
-            if (token === botMoveToken) {
-                setStatusNote(`AI error: ${errorMessage(error)}`)
-                setRetryVisible(true)
+            if (game.isOver()) {
+                return
             }
-            return
-        }
-        // a new game or a draw offer took over while the AI was thinking
-        if (token !== botMoveToken || game.isOver()) {
-            return
-        }
-        if (decision.resign) {
-            game.conclude(
-                `${aiSide() === 'white' ? 'White' : 'Black'} resigned`
-            )
-            finish()
-            return
-        }
-        // an empty or illegal reply leaves the board alone; the player can
-        // ask the AI for another turn instead of being stuck
-        if (!decision.move || !game.playSan(decision.move)) {
-            setStatusNote('AI did not make a valid move.')
-            setRetryVisible(true)
-            return
-        }
-        setRetryVisible(false)
-        setStatusNote(undefined)
-        goLive()
-        render()
-        // a premove queued during the bot's turn plays now: chessground
-        // fires its move event, so the board, the game and the next reply
-        // all follow. it also clears any premove that the reply made illegal.
-        view.playPremove()
-        if (decision.offerDraw && !game.isOver()) {
-            showDrawOffer()
+            let decision: TurnDecision
+            try {
+                decision = bot.turn
+                    ? await bot.turn(game.chess(), controller.signal)
+                    : {
+                          move: await bot.pickMove(
+                              game.chess(),
+                              controller.signal
+                          ),
+                      }
+            } catch (error) {
+                if (token === botMoveToken) {
+                    // a cancel is not a failure: say so plainly
+                    setStatusNote(
+                        controller.signal.aborted
+                            ? 'AI move cancelled.'
+                            : `AI error: ${errorMessage(error)}`
+                    )
+                }
+                return
+            }
+            // a new game, a cancel or a draw offer took over while the AI
+            // was thinking
+            if (token !== botMoveToken || game.isOver()) {
+                return
+            }
+            if (decision.resign) {
+                game.conclude(
+                    `${aiSide() === 'white' ? 'White' : 'Black'} resigned`
+                )
+                finish()
+                return
+            }
+            // an empty or illegal reply leaves the board alone; Regenerate
+            // is how the player asks the AI for another turn
+            if (!decision.move || !game.playSan(decision.move)) {
+                setStatusNote('AI did not make a valid move.')
+                return
+            }
+            setStatusNote(undefined)
+            goLive()
+            render()
+            // a premove queued during the bot's turn plays now: chessground
+            // fires its move event, so the board, the game and the next reply
+            // all follow. it also clears any premove the reply made illegal.
+            view.playPremove()
+            if (decision.offerDraw && !game.isOver()) {
+                showDrawOffer()
+            }
+        } finally {
+            if (botAbort === controller) {
+                botAbort = null
+            }
+            if (token === botMoveToken) {
+                setThinking(false)
+            }
         }
     }
 
     const scheduleBotMove = () => {
         const token = ++botMoveToken
+        setThinking(true)
         window.setTimeout(() => {
             if (token === botMoveToken) {
                 void playBotMove(token)
@@ -256,8 +321,8 @@ export function createSession(element: HTMLElement, bot: MoveSource): Session {
     const finish = () => {
         inProgress = false
         cancelBotMove()
+        setThinking(false)
         hideDrawOffer()
-        setRetryVisible(false)
         // drop any premove or selection along with the pending reply
         view.cancelMove()
         goLive()
@@ -291,8 +356,6 @@ export function createSession(element: HTMLElement, bot: MoveSource): Session {
         } catch (error) {
             if (token === botMoveToken) {
                 setStatusNote(`AI error: ${errorMessage(error)}`)
-                // the offer replaced the scheduled reply, so the AI is stuck
-                setRetryVisible(aiToMove())
             }
             return
         }
@@ -317,14 +380,42 @@ export function createSession(element: HTMLElement, bot: MoveSource): Session {
         }
     }
 
-    /** ask the AI for its turn again after a failed reply */
-    const retryTurn = () => {
-        if (!inProgress || !aiToMove()) {
+    /**
+     * Ask the AI again: while it is its turn any pending reply is replaced,
+     * and once it has moved its last move is taken back first.
+     */
+    const regenerate = () => {
+        if (!inProgress || game.isOver()) {
             return
         }
-        setRetryVisible(false)
+        if (thinking) {
+            // a reply is already on its way; drop it and start over
+            botAbort?.abort()
+            cancelBotMove()
+            setThinking(false)
+        }
+        if (!aiToMove()) {
+            if (!aiJustMoved() || !game.undo()) {
+                return
+            }
+            // its move may have carried a draw offer or a stale note
+            hideDrawOffer()
+            goLive()
+            render()
+        }
         setStatusNote(undefined)
         scheduleBotMove()
+    }
+
+    /** drop the in-flight AI move, leaving it the AI's turn to regenerate */
+    const cancelTurn = () => {
+        if (!inProgress || !thinking) {
+            return
+        }
+        botAbort?.abort()
+        cancelBotMove()
+        setThinking(false)
+        setStatusNote('AI move cancelled.')
     }
 
     const answerDrawOffer = (accept: boolean) => {
@@ -341,8 +432,8 @@ export function createSession(element: HTMLElement, bot: MoveSource): Session {
 
     const startGame = (side: Side) => {
         cancelBotMove()
+        setThinking(false)
         hideDrawOffer()
-        setRetryVisible(false)
         setStatusNote(undefined)
         // drop any premove or selection left over from the previous game
         view.cancelMove()
@@ -356,5 +447,15 @@ export function createSession(element: HTMLElement, bot: MoveSource): Session {
         }
     }
 
-    return { startGame, resign, offerDraw, answerDrawOffer, retryTurn }
+    // paint the controls for the pre-game state right away
+    notifyState()
+
+    return {
+        startGame,
+        resign,
+        offerDraw,
+        answerDrawOffer,
+        regenerate,
+        cancelTurn,
+    }
 }

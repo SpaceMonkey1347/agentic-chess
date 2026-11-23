@@ -158,6 +158,7 @@
                             name="move-template"
                             id="move-prompt-block"
                             cols="8"
+                            spellcheck="false"
                         ></textarea>
                         <label for="draw-template">
                             <span>Draw Template</span>
@@ -179,6 +180,7 @@
                             name="draw-template"
                             id="draw-prompt-block"
                             cols="8"
+                            spellcheck="false"
                         ></textarea>
                         <div
                             class="side-choice"
@@ -214,6 +216,10 @@
                                 <label for="side-black">Black</label>
                             </div>
                         </div>
+                        <div
+                            class="connection-result"
+                            id="connection-result"
+                        ></div>
                         <button type="button" class="primary" id="start-game">
                             Start Game
                         </button>
@@ -221,10 +227,12 @@
                     <section class="tab-panel" id="panel-move-history">
                         <ol class="move-history"></ol>
                         <p class="game-status" id="game-status" hidden></p>
-                        <div class="turn-retry" id="turn-retry" hidden>
-                            <span>Ask the AI again.</span>
-                            <button type="button" id="retry-ai-turn">
-                                Retry
+                        <div class="ai-turn" id="ai-turn">
+                            <button type="button" id="regenerate-move" disabled>
+                                Regenerate
+                            </button>
+                            <button type="button" id="cancel-ai-move" hidden>
+                                Cancel
                             </button>
                         </div>
                         <div class="move-nav">
@@ -275,11 +283,20 @@
                             </div>
                         </div>
                         <div class="game-actions">
-                            <button type="button" class="primary" id="new-game">
+                            <button
+                                type="button"
+                                class="primary"
+                                id="new-game"
+                                disabled
+                            >
                                 New Game
                             </button>
-                            <button type="button" id="resign">Resign</button>
-                            <button type="button" id="draw">Draw</button>
+                            <button type="button" id="resign" disabled>
+                                Resign
+                            </button>
+                            <button type="button" id="draw" disabled>
+                                Draw
+                            </button>
                         </div>
                     </section>
                 </div>
