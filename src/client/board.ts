@@ -70,9 +70,10 @@ export function createBoardView(
     element: HTMLElement,
     { onMove }: BoardViewOptions
 ): BoardView {
-    // chessground empties the board element when it renders, so the promotion
-    // dialog (which sits inside .cg-wrap to reuse the board's piece art) is
-    // grabbed first and put back once the board has been built
+    // the promotion dialog lives inside the board element so it can reuse the
+    // board's piece art, but chessground empties that element every time it
+    // builds the board — including the orientation change on a new game's
+    // first render. keep the reference and re-insert it after every render.
     const promotionEl = document.getElementById('promotion')
 
     const ground = Chessground(element, {
@@ -91,12 +92,18 @@ export function createBoardView(
         },
     })
 
-    if (promotionEl) {
-        element.appendChild(promotionEl)
+    const keepPromotion = () => {
+        if (promotionEl && promotionEl.parentElement !== element) {
+            element.appendChild(promotionEl)
+        }
     }
+    keepPromotion()
 
     return {
-        render: (view: PositionView) => ground.set(toGroundConfig(view)),
+        render: (view: PositionView) => {
+            ground.set(toGroundConfig(view))
+            keepPromotion()
+        },
         cancelMove: () => ground.cancelMove(),
         playPremove: () => ground.playPremove(),
     }

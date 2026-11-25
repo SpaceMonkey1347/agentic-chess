@@ -497,6 +497,18 @@ body {
         }
     }
 
+    .game-controls {
+        margin-top: 16px;
+        flex: none;
+        display: grid;
+        gap: 8px;
+        grid-template-columns: repeat(2, 1fr);
+        button {
+            margin: 0;
+            padding: 8px 0;
+        }
+    }
+
     /* connection result — filled in by main.ts after a Start Game check */
     .connection-result {
         display: flex;
@@ -601,6 +613,37 @@ body {
 #tab-ai-config:checked ~ #panel-ai-config,
 #tab-move-history:checked ~ #panel-move-history {
     display: flex;
+}
+
+/* "Play Random Bot Instead": checking it collapses every setting above the
+   toggle, so the panel closes up and the toggle becomes the panel's top.
+   grid-template-rows 1fr→0fr animates an auto height to zero. */
+.settings-above {
+    display: grid;
+    grid-template-rows: 1fr;
+    transition:
+        grid-template-rows 0.3s ease,
+        opacity 0.25s ease;
+}
+
+.settings-above-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-height: 0;
+    overflow: hidden;
+    transition: visibility 0s 0s;
+}
+
+#panel-ai-config:has(#play-random-bot:checked) .settings-above {
+    grid-template-rows: 0fr;
+    opacity: 0;
+}
+
+/* hold the clipped fields out of the tab order once the collapse finishes */
+#panel-ai-config:has(#play-random-bot:checked) .settings-above-inner {
+    visibility: hidden;
+    transition-delay: 0.3s;
 }
 
 #instruction-prompt-block {

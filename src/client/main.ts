@@ -1,5 +1,6 @@
 import htmx from 'htmx.org'
 
+import { randomBot, switchableBot } from './game.ts'
 import type { Side } from './game.ts'
 import { buildMovePrompt, defaultDrawOfferPrompt } from './prompt.ts'
 import { createSession } from './session.ts'
@@ -180,6 +181,9 @@ const connectionResultEl = document.getElementById('connection-result')
 const startButton = document.getElementById(
     'start-game'
 ) as HTMLButtonElement | null
+const abortButton = document.getElementById(
+    'abort-game'
+) as HTMLButtonElement | null
 const newGameButton = document.getElementById(
     'new-game'
 ) as HTMLButtonElement | null
@@ -193,6 +197,9 @@ const regenerateButton = document.getElementById(
 const cancelButton = document.getElementById(
     'cancel-ai-move'
 ) as HTMLButtonElement | null
+const playRandomBotToggle = document.getElementById(
+    'play-random-bot'
+) as HTMLInputElement | null
 
 const clearFieldErrors = () => {
     for (const el of Object.values(configFields)) {
@@ -264,6 +271,9 @@ const renderGameState = (state: GameState) => {
         startButton.disabled = running
         startButton.textContent = running ? 'Game in progress' : 'Start Game'
     }
+    if (abortButton) {
+        abortButton.disabled = !running
+    }
     // resign and draw only make sense while a game is live
     if (resignButton) {
         resignButton.disabled = !running
@@ -288,17 +298,29 @@ const renderGameState = (state: GameState) => {
 const boardEl = document.getElementById('chessboard')
 
 if (boardEl) {
-    const session = createSession(boardEl, createEndpointBot(readConfig), {
-        onStateChange: renderGameState,
-    })
+    // the random bot stands in for the endpoint: the sidebar toggle picks
+    // which one answers, decided per turn so it can be flipped mid-game
+    const endpointBot = createEndpointBot(readConfig)
+    const session = createSession(
+        boardEl,
+        switchableBot(() =>
+            playRandomBotToggle?.checked ? randomBot : endpointBot
+        ),
+        { onStateChange: renderGameState }
+    )
 
     /**
      * Start Game and New Game both go through the connection check, so a bad
      * endpoint, key or model is pointed at now instead of failing on the move.
+     * The random bot talks to nobody, so it skips the check.
      */
     const startValidatedGame = async () => {
         clearFieldErrors()
         clearConnectionResult()
+        if (playRandomBotToggle?.checked) {
+            session.startGame(chosenSide())
+            return
+        }
         if (startButton) {
             startButton.disabled = true
             startButton.textContent = 'Checking…'
@@ -337,6 +359,7 @@ if (boardEl) {
     startButton?.addEventListener('click', start)
     newGameButton?.addEventListener('click', start)
     resignButton?.addEventListener('click', session.resign)
+    abortButton?.addEventListener('click', session.resign)
     drawButton?.addEventListener('click', session.offerDraw)
     document
         .getElementById('accept-draw')

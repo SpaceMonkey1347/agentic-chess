@@ -85,6 +85,9 @@ export function createGame(): Game {
         if (game.isThreefoldRepetition()) {
             return 'Draw by repetition'
         }
+        if (game.isDrawByFiftyMoves()) {
+            return 'Draw by 50 move rule'
+        }
         if (game.isDraw()) {
             return 'Draw'
         }
@@ -232,4 +235,28 @@ export const randomBot: MoveSource = {
     async takeTurn(game: Chess): Promise<string | null> {
         return this.pickMove(game)
     },
+}
+
+/**
+ * A MoveSource that defers to whichever source `choose` returns. The choice is
+ * made per call, so it can change between moves; absent optional methods fall
+ * back the same way the game loop would.
+ */
+export function switchableBot(choose: () => MoveSource): MoveSource {
+    return {
+        pickMove: (game, signal) => choose().pickMove(game, signal),
+        takeTurn: (game, signal) => choose().takeTurn(game, signal),
+        turn: async (game, signal) => {
+            const source = choose()
+            return source.turn
+                ? source.turn(game, signal)
+                : { move: await source.pickMove(game, signal) }
+        },
+        respondToDraw: async (game, aiSide, signal) => {
+            const source = choose()
+            return source.respondToDraw
+                ? source.respondToDraw(game, aiSide, signal)
+                : null
+        },
+    }
 }

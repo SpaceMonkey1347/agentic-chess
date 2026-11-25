@@ -85,103 +85,122 @@
                         </label>
                     </div>
                     <section class="tab-panel" id="panel-ai-config">
-                        <label for="api-endpoint">
-                            <span>API Endpoint</span>
-                        </label>
-                        <input
-                            type="text"
-                            id="api-endpoint"
-                            placeholder="Example: http://localhost:1234/v1"
-                        />
-                        <div class="field-row">
-                            <label for="api-key">API Key</label>
-                            <label
-                                for="api-key-visibility-toggle"
-                                class="icon-toggle-label"
-                            >
+                        <div class="settings-above">
+                            <div class="settings-above-inner">
+                                <label for="api-endpoint">
+                                    <span>API Endpoint</span>
+                                </label>
                                 <input
-                                    type="checkbox"
-                                    class="icon-toggle"
-                                    id="api-key-visibility-toggle"
-                                    aria-label="Show API key"
+                                    type="text"
+                                    id="api-endpoint"
+                                    placeholder="Example: http://localhost:1234/v1"
                                 />
-                                <span
-                                    class="show-hide-img"
-                                    aria-hidden="true"
-                                ></span>
-                            </label>
+                                <div class="field-row">
+                                    <label for="api-key">API Key</label>
+                                    <label
+                                        for="api-key-visibility-toggle"
+                                        class="icon-toggle-label"
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            class="icon-toggle"
+                                            id="api-key-visibility-toggle"
+                                            aria-label="Show API key"
+                                        />
+                                        <span
+                                            class="show-hide-img"
+                                            aria-hidden="true"
+                                        ></span>
+                                    </label>
+                                </div>
+                                <input
+                                    type="password"
+                                    id="api-key"
+                                    name="api-key"
+                                    placeholder="sk-..."
+                                    autocomplete="off"
+                                    autocapitalize="off"
+                                    spellcheck="false"
+                                />
+                                <label for="ai-model">Model Name</label>
+                                <input
+                                    type="text"
+                                    id="ai-model"
+                                    placeholder="gpt-4o"
+                                />
+                                <label
+                                    for="allow-draw-offer-toggle"
+                                    class="toggle-option"
+                                >
+                                    <input
+                                        type="checkbox"
+                                        id="allow-draw-offer-toggle"
+                                    />
+                                    <span>Allow Draw Offer</span>
+                                    <div></div>
+                                </label>
+                                <label
+                                    for="allow-resign-toggle"
+                                    class="toggle-option"
+                                >
+                                    <input
+                                        type="checkbox"
+                                        id="allow-resign-toggle"
+                                    />
+                                    <span>Allow Resign</span>
+                                    <div></div>
+                                </label>
+                                <label for="move-template">
+                                    <span>Move Template</span>
+                                    <button
+                                        type="button"
+                                        class="icon-btn icon-btn--info"
+                                        data-help="move"
+                                    >
+                                        ?
+                                    </button>
+                                    <button
+                                        id="reset-move-template"
+                                        class="icon-btn icon-btn--reset"
+                                    >
+                                        ↺
+                                    </button>
+                                </label>
+                                <textarea
+                                    name="move-template"
+                                    id="move-prompt-block"
+                                    cols="8"
+                                    spellcheck="false"
+                                ></textarea>
+                                <label for="draw-template">
+                                    <span>Draw Template</span>
+                                    <button
+                                        type="button"
+                                        class="icon-btn icon-btn--info"
+                                        data-help="draw"
+                                    >
+                                        ?
+                                    </button>
+                                    <button
+                                        id="reset-draw-template"
+                                        class="icon-btn icon-btn--reset"
+                                    >
+                                        ↺
+                                    </button>
+                                </label>
+                                <textarea
+                                    name="draw-template"
+                                    id="draw-prompt-block"
+                                    cols="8"
+                                    spellcheck="false"
+                                ></textarea>
+                            </div>
                         </div>
-                        <input
-                            type="password"
-                            id="api-key"
-                            name="api-key"
-                            placeholder="sk-..."
-                            autocomplete="off"
-                            autocapitalize="off"
-                            spellcheck="false"
-                        />
-                        <label for="ai-model">Model Name</label>
-                        <input type="text" id="ai-model" placeholder="gpt-4o" />
-                        <label
-                            for="allow-draw-offer-toggle"
-                            class="toggle-option"
-                        >
-                            <input
-                                type="checkbox"
-                                id="allow-draw-offer-toggle"
-                            />
-                            <span>Allow Draw Offer</span>
+                        <label for="play-random-bot" class="toggle-option">
+                            <input type="checkbox" id="play-random-bot" />
+                            <span>Play Random Bot Instead</span>
                             <div></div>
                         </label>
-                        <label for="allow-resign-toggle" class="toggle-option">
-                            <input type="checkbox" id="allow-resign-toggle" />
-                            <span>Allow Resign</span>
-                            <div></div>
-                        </label>
-                        <label for="move-template">
-                            <span>Move Template</span>
-                            <button
-                                type="button"
-                                class="icon-btn icon-btn--info"
-                                data-help="move"
-                            >
-                                ?
-                            </button>
-                            <button
-                                id="reset-move-template"
-                                class="icon-btn icon-btn--reset"
-                            >
-                                ↺
-                            </button>
-                        </label>
-                        <textarea
-                            name="move-template"
-                            id="move-prompt-block"
-                            cols="8"
-                            spellcheck="false"
-                        ></textarea>
-                        <label for="draw-template">
-                            <span>Draw Template</span>
-                            <button
-                                type="button"
-                                class="icon-btn icon-btn--info"
-                                data-help="draw"
-                            >
-                                ?
-                            </button>
-                            <button
-                                id="reset-draw-template"
-                                class="icon-btn icon-btn--reset"
-                            >
-                                ↺
-                            </button>
-                        </label>
-                        <textarea
-                            name="draw-template"
-                            id="draw-prompt-block"
-                            cols="8"
-                            spellcheck="false"
-                        ></textarea>
                         <div
                             class="side-choice"
                             role="radiogroup"
@@ -220,9 +239,23 @@
                             class="connection-result"
                             id="connection-result"
                         ></div>
-                        <button type="button" class="primary" id="start-game">
-                            Start Game
-                        </button>
+                        <div class="game-controls">
+                            <button
+                                type="button"
+                                class="primary"
+                                id="start-game"
+                            >
+                                Start Game
+                            </button>
+                            <button
+                                type="button"
+                                class="secondary"
+                                id="abort-game"
+                                disabled
+                            >
+                                Abort Game
+                            </button>
+                        </div>
                     </section>
                     <section class="tab-panel" id="panel-move-history">
                         <ol class="move-history"></ol>
