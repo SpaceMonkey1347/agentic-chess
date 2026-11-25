@@ -201,6 +201,9 @@ const playRandomBotToggle = document.getElementById(
     'play-random-bot'
 ) as HTMLInputElement | null
 
+const tabConfigEl = document.getElementById('tab-config') as HTMLInputElement | null
+const tabSessionEl = document.getElementById('tab-session') as HTMLInputElement | null
+
 const clearFieldErrors = () => {
     for (const el of Object.values(configFields)) {
         el?.classList.remove('field-invalid')
@@ -298,6 +301,12 @@ const renderGameState = (state: GameState) => {
 const boardEl = document.getElementById('chessboard')
 
 if (boardEl) {
+    const focusSession = () => {
+        if (tabConfigEl && tabSessionEl) {
+            tabConfigEl.checked = false
+            tabSessionEl.checked = true
+        }
+    }
     // the random bot stands in for the endpoint: the sidebar toggle picks
     // which one answers, decided per turn so it can be flipped mid-game
     const endpointBot = createEndpointBot(readConfig)
@@ -318,6 +327,7 @@ if (boardEl) {
         clearFieldErrors()
         clearConnectionResult()
         if (playRandomBotToggle?.checked) {
+            focusSession()
             session.startGame(chosenSide())
             return
         }
@@ -351,6 +361,7 @@ if (boardEl) {
             return
         }
         showConnectionResult('ok', 'Connected', 'The endpoint answered.')
+        focusSession()
         session.startGame(chosenSide())
     }
 

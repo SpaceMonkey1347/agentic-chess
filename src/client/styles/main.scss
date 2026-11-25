@@ -598,20 +598,20 @@ body {
 }
 
 /* CSS-only tabs: the checked radio switches the visible label + panel */
-#tab-ai-config:checked ~ .tab-bar [for='tab-ai-config'],
-#tab-move-history:checked ~ .tab-bar [for='tab-move-history'] {
+#tab-config:checked ~ .tab-bar [for='tab-config'],
+#tab-session:checked ~ .tab-bar [for='tab-session'] {
     color: var(--text);
     border-bottom-color: var(--accent);
 }
 
-#tab-ai-config:focus-visible ~ .tab-bar [for='tab-ai-config'],
-#tab-move-history:focus-visible ~ .tab-bar [for='tab-move-history'] {
+#tab-config:focus-visible ~ .tab-bar [for='tab-config'],
+#tab-session:focus-visible ~ .tab-bar [for='tab-session'] {
     outline: 2px solid var(--accent);
     outline-offset: -2px;
 }
 
-#tab-ai-config:checked ~ #panel-ai-config,
-#tab-move-history:checked ~ #panel-move-history {
+#tab-config:checked ~ #panel-config,
+#tab-session:checked ~ #panel-session {
     display: flex;
 }
 
@@ -635,13 +635,13 @@ body {
     transition: visibility 0s 0s;
 }
 
-#panel-ai-config:has(#play-random-bot:checked) .settings-above {
+#panel-config:has(#play-random-bot:checked) .settings-above {
     grid-template-rows: 0fr;
     opacity: 0;
 }
 
 /* hold the clipped fields out of the tab order once the collapse finishes */
-#panel-ai-config:has(#play-random-bot:checked) .settings-above-inner {
+#panel-config:has(#play-random-bot:checked) .settings-above-inner {
     visibility: hidden;
     transition-delay: 0.3s;
 }
@@ -655,7 +655,7 @@ body {
 }
 
 /* move history: scrolling move list with the nav buttons pinned to the bottom */
-#panel-move-history {
+#panel-session {
     padding: 8px 0 0;
     overflow: hidden;
 

@@ -18,7 +18,7 @@ export function createMoveHistory({
     showPly,
 }: MoveHistoryOptions): MoveHistory {
     const listEl = document.querySelector<HTMLOListElement>(
-        '#panel-move-history .move-history'
+        '#panel-session .move-history'
     )
     const nav: Record<
         'first' | 'prev' | 'next' | 'last',

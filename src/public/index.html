@@ -69,22 +69,20 @@
                         type="radio"
                         class="radio-input"
                         name="sidebar-tab"
-                        id="tab-ai-config"
+                        id="tab-config"
                         checked
                     />
                     <input
                         type="radio"
                         class="radio-input"
                         name="sidebar-tab"
-                        id="tab-move-history"
+                        id="tab-session"
                     />
                     <div class="tab-bar">
-                        <label class="tab" for="tab-ai-config">AI Config</label>
-                        <label class="tab" for="tab-move-history">
-                            Move History
-                        </label>
+                        <label class="tab" for="tab-config">Config</label>
+                        <label class="tab" for="tab-session"> Session </label>
                     </div>
-                    <section class="tab-panel" id="panel-ai-config">
+                    <section class="tab-panel" id="panel-config">
                         <div class="settings-above">
                             <div class="settings-above-inner">
                                 <label for="api-endpoint">
@@ -257,7 +255,7 @@
                             </button>
                         </div>
                     </section>
-                    <section class="tab-panel" id="panel-move-history">
+                    <section class="tab-panel" id="panel-session">
                         <ol class="move-history"></ol>
                         <p class="game-status" id="game-status" hidden></p>
                         <div class="ai-turn" id="ai-turn">
@@ -273,6 +271,7 @@
                                 type="button"
                                 id="move-first"
                                 aria-label="First move"
+                                disabled
                             >
                                 &lt;&lt;
                             </button>
@@ -280,6 +279,7 @@
                                 type="button"
                                 id="move-prev"
                                 aria-label="Previous move"
+                                disabled
                             >
                                 &lt;
                             </button>
@@ -287,6 +287,7 @@
                                 type="button"
                                 id="move-next"
                                 aria-label="Next move"
+                                disabled
                             >
                                 &gt;
                             </button>
@@ -294,6 +295,7 @@
                                 type="button"
                                 id="move-last"
                                 aria-label="Last move"
+                                disabled
                             >
                                 &gt;&gt;
                             </button>
