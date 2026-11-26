@@ -18,6 +18,8 @@ const BOT_MOVE_DELAY_MS = 300
 export interface Session {
     /** reset and start a new game with the player on the given side */
     startGame(side: Side): void
+    /** the player aborts game before thier first move */
+    abort(): void
     /** the player gives up */
     resign(): void
     /** the player offers a draw */
@@ -40,6 +42,8 @@ export interface GameState {
     thinking: boolean
     /** the AI's move can be asked for again: its turn, or it just moved */
     canRegenerate: boolean
+    /** number of plys played */
+    playerMoved: boolean
 }
 
 export interface SessionOptions {
@@ -171,6 +175,17 @@ export function createSession(
     const canRegenerate = () =>
         inProgress && !game.isOver() && (aiToMove() || aiJustMoved())
 
+    const playerMoved = () => {
+        const moves = game.moves()
+        if (moves.length === 0) {
+            return false
+        }
+        if (playingAs === 'black' && moves.length < 2) {
+            return false
+        }
+        return true
+    }
+
     /** tell the sidebar what it may show */
     const notifyState = () =>
         onStateChange?.({
@@ -178,6 +193,7 @@ export function createSession(
             over: game.isOver(),
             thinking,
             canRegenerate: canRegenerate(),
+            playerMoved: playerMoved(),
         })
 
     /** a request is running; the sidebar shows Cancel only while it is */
@@ -337,6 +353,17 @@ export function createSession(
         finish()
     }
 
+    const abort = () => {
+        if (!inProgress || game.isOver()) {
+            return
+        }
+        const moves = game.moves()
+        if (moves.length === 0 || (playingAs === 'black' && moves.length < 2)) {
+            game.conclude('game aborted')
+            finish()
+        }
+    }
+
     /**
      * The player offers a draw. The AI answers with a decision and, when it
      * declines, the move it wants to play — so the offer replaces the reply
@@ -452,6 +479,7 @@ export function createSession(
 
     return {
         startGame,
+        abort,
         resign,
         offerDraw,
         answerDrawOffer,

@@ -497,18 +497,6 @@ body {
         }
     }
 
-    .game-controls {
-        margin-top: 16px;
-        flex: none;
-        display: grid;
-        gap: 8px;
-        grid-template-columns: repeat(2, 1fr);
-        button {
-            margin: 0;
-            padding: 8px 0;
-        }
-    }
-
     /* connection result — filled in by main.ts after a Start Game check */
     .connection-result {
         display: flex;

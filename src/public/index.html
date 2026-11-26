@@ -237,23 +237,9 @@
                             class="connection-result"
                             id="connection-result"
                         ></div>
-                        <div class="game-controls">
-                            <button
-                                type="button"
-                                class="primary"
-                                id="start-game"
-                            >
-                                Start Game
-                            </button>
-                            <button
-                                type="button"
-                                class="secondary"
-                                id="abort-game"
-                                disabled
-                            >
-                                Abort Game
-                            </button>
-                        </div>
+                        <button type="button" class="primary" id="start-game">
+                            Start Game
+                        </button>
                     </section>
                     <section class="tab-panel" id="panel-session">
                         <ol class="move-history"></ol>
@@ -321,12 +307,12 @@
                             <button
                                 type="button"
                                 class="primary"
-                                id="new-game"
+                                id="play-game"
                                 disabled
                             >
                                 New Game
                             </button>
-                            <button type="button" id="resign" disabled>
+                            <button type="button" id="end-game" disabled>
                                 Resign
                             </button>
                             <button type="button" id="draw" disabled>

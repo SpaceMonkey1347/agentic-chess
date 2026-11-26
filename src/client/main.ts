@@ -181,14 +181,11 @@ const connectionResultEl = document.getElementById('connection-result')
 const startButton = document.getElementById(
     'start-game'
 ) as HTMLButtonElement | null
-const abortButton = document.getElementById(
-    'abort-game'
+const playButton = document.getElementById(
+    'play-game'
 ) as HTMLButtonElement | null
-const newGameButton = document.getElementById(
-    'new-game'
-) as HTMLButtonElement | null
-const resignButton = document.getElementById(
-    'resign'
+const endGameButton = document.getElementById(
+    'end-game'
 ) as HTMLButtonElement | null
 const drawButton = document.getElementById('draw') as HTMLButtonElement | null
 const regenerateButton = document.getElementById(
@@ -201,8 +198,12 @@ const playRandomBotToggle = document.getElementById(
     'play-random-bot'
 ) as HTMLInputElement | null
 
-const tabConfigEl = document.getElementById('tab-config') as HTMLInputElement | null
-const tabSessionEl = document.getElementById('tab-session') as HTMLInputElement | null
+const tabConfigEl = document.getElementById(
+    'tab-config'
+) as HTMLInputElement | null
+const tabSessionEl = document.getElementById(
+    'tab-session'
+) as HTMLInputElement | null
 
 const clearFieldErrors = () => {
     for (const el of Object.values(configFields)) {
@@ -264,6 +265,7 @@ let gameState: GameState = {
     over: false,
     thinking: false,
     canRegenerate: false,
+    playerMoved: false,
 }
 
 /** show only the controls the current game state allows */
@@ -274,19 +276,18 @@ const renderGameState = (state: GameState) => {
         startButton.disabled = running
         startButton.textContent = running ? 'Game in progress' : 'Start Game'
     }
-    if (abortButton) {
-        abortButton.disabled = !running
-    }
     // resign and draw only make sense while a game is live
-    if (resignButton) {
-        resignButton.disabled = !running
+    if (endGameButton) {
+        endGameButton.disabled = !running
+        endGameButton.textContent = state.playerMoved ? 'Resign' : 'Abort Game'
     }
     if (drawButton) {
         drawButton.disabled = !running
     }
     // a new game only makes sense once the last one is over
-    if (newGameButton) {
-        newGameButton.disabled = !state.over
+    if (playButton) {
+        playButton.disabled = running
+        playButton.textContent = state.over ? 'New Game' : 'Start Game'
     }
     // regenerate is offered while the AI is to move or has just moved
     if (regenerateButton) {
@@ -307,6 +308,14 @@ if (boardEl) {
             tabSessionEl.checked = true
         }
     }
+
+    const focusConfig = () => {
+        if (tabConfigEl && tabSessionEl) {
+            tabConfigEl.checked = true
+            tabSessionEl.checked = false
+        }
+    }
+
     // the random bot stands in for the endpoint: the sidebar toggle picks
     // which one answers, decided per turn so it can be flipped mid-game
     const endpointBot = createEndpointBot(readConfig)
@@ -335,6 +344,10 @@ if (boardEl) {
             startButton.disabled = true
             startButton.textContent = 'Checking…'
         }
+        if (endGameButton) {
+            endGameButton.disabled = false
+            endGameButton.textContent = 'Abort Game'
+        }
         let result: CheckResult
         try {
             result = await checkConnection(readConfig())
@@ -345,6 +358,7 @@ if (boardEl) {
             }
         }
         if (!result.ok) {
+            focusConfig()
             markFieldInvalid(result.field)
             showConnectionResult(
                 'error',
@@ -368,9 +382,12 @@ if (boardEl) {
     const start = () => void startValidatedGame()
 
     startButton?.addEventListener('click', start)
-    newGameButton?.addEventListener('click', start)
-    resignButton?.addEventListener('click', session.resign)
-    abortButton?.addEventListener('click', session.resign)
+    playButton?.addEventListener('click', start)
+    endGameButton?.addEventListener('click', () => {
+        // resign if abort unavailable
+        session.abort()
+        session.resign()
+    })
     drawButton?.addEventListener('click', session.offerDraw)
     document
         .getElementById('accept-draw')
